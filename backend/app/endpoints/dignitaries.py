@@ -7,7 +7,7 @@ from postgrest.exceptions import APIError
 from supabase import Client, StorageException
 from typing import Any, Dict, List
 
-from ..auth import get_current_user, require_admin, require_editor_or_admin
+from ..auth import get_current_user, get_profile_record, require_admin, require_editor_or_admin
 from ..db import get_supabase
 from ..postgrest_utils import is_missing_relation_error, is_missing_schema_field_error
 from ..schemas import (
