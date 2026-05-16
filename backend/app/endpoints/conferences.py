@@ -92,6 +92,33 @@ def _fetch_roster_map(supabase: Client, roster_ids: List[str]) -> Dict[str, Dict
     return {row["id"]: row for row in (res.data or [])}
 
 
+def _get_roster_entry_for_conference(
+    supabase: Client,
+    conf_id: str,
+    roster_or_directory_id: str,
+) -> Dict[str, Any] | None:
+    roster = (
+        supabase.table("conference_dignitaries")
+        .select("*")
+        .eq("conference_id", conf_id)
+        .eq("id", roster_or_directory_id)
+        .execute()
+    )
+    if roster.data:
+        return roster.data[0]
+
+    fallback = (
+        supabase.table("conference_dignitaries")
+        .select("*")
+        .eq("conference_id", conf_id)
+        .eq("directory_dignitary_id", roster_or_directory_id)
+        .execute()
+    )
+    if fallback.data:
+        return fallback.data[0]
+    return None
+
+
 def _enrich_protocol_assignments(
     assignments: List[Dict[str, Any]],
     profile_map: Dict[str, Dict[str, Any]],
@@ -359,15 +386,10 @@ def upsert_conference_protocol_assignment(
     conference_role = _clean_optional_text(assignment_data.get("conference_role"))
     assigned_dignitary_id = _clean_optional_text(assignment_data.get("assigned_conference_dignitary_id"))
     if assigned_dignitary_id:
-        roster = (
-            supabase.table("conference_dignitaries")
-            .select("*")
-            .eq("id", assigned_dignitary_id)
-            .eq("conference_id", conf_id)
-            .execute()
-        )
-        if not roster.data:
+        roster = _get_roster_entry_for_conference(supabase, conf_id, assigned_dignitary_id)
+        if not roster:
             raise HTTPException(status_code=400, detail="Assigned dignitary must belong to this conference")
+        assigned_dignitary_id = roster["id"]
 
     try:
         existing = (

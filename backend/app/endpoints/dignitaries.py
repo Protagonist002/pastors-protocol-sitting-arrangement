@@ -86,9 +86,11 @@ def _flatten_roster_entry(
     assigned_profile = profile_map.get(assignment.get("user_id")) if assignment else None
     first_arrival_session = session_map.get(row.get("first_arrival_session_id"))
     return {
+        **dignitary,
         "id": row.get("id"),
+        "conference_dignitary_id": row.get("id"),
         "conference_id": row.get("conference_id"),
-        "directory_dignitary_id": row.get("directory_dignitary_id"),
+        "directory_dignitary_id": row.get("directory_dignitary_id") or dignitary.get("id"),
         "created_at": row.get("created_at"),
         "first_arrival_at": row.get("first_arrival_at"),
         "first_arrival_session_id": row.get("first_arrival_session_id"),
@@ -97,7 +99,6 @@ def _flatten_roster_entry(
         "assigned_protocol_name": assigned_profile.get("full_name") if assigned_profile else None,
         "assigned_protocol_profile": assigned_profile,
         "conference_role": assignment.get("conference_role") if assignment else None,
-        **dignitary,
     }
 
 
@@ -115,16 +116,34 @@ def _get_directory_dignitary(directory_dignitary_id: str, supabase: Client) -> D
     return res.data[0]
 
 
-def _get_roster_entry(conference_dignitary_id: str, supabase: Client) -> Dict[str, Any]:
-    res = (
+def _get_roster_entry(
+    conference_dignitary_id: str,
+    supabase: Client,
+    conference_id: str | None = None,
+) -> Dict[str, Any]:
+    query = (
         supabase.table("conference_dignitaries")
         .select(CONFERENCE_ROSTER_SELECT)
         .eq("id", conference_dignitary_id)
-        .execute()
     )
-    if not res.data:
-        raise HTTPException(status_code=404, detail="Conference dignitary not found")
-    return res.data[0]
+    if conference_id:
+        query = query.eq("conference_id", conference_id)
+    res = query.execute()
+    if res.data:
+        return res.data[0]
+
+    if conference_id:
+        fallback = (
+            supabase.table("conference_dignitaries")
+            .select(CONFERENCE_ROSTER_SELECT)
+            .eq("conference_id", conference_id)
+            .eq("directory_dignitary_id", conference_dignitary_id)
+            .execute()
+        )
+        if fallback.data:
+            return fallback.data[0]
+
+    raise HTTPException(status_code=404, detail="Conference dignitary not found")
 
 
 def _get_dignitary_or_404(dignitary_id: str, supabase: Client) -> Dict[str, Any]:
@@ -404,14 +423,14 @@ def create_dignitary(
             detail="Session dignitaries must be selected from the conference dignitary list.",
         )
 
-    roster_entry = _get_roster_entry(conference_dignitary_id, supabase)
+    roster_entry = _get_roster_entry(conference_dignitary_id, supabase, session.get("conference_id"))
     if roster_entry.get("conference_id") != session.get("conference_id"):
         raise HTTPException(status_code=400, detail="Conference dignitary does not belong to this conference")
 
     source = roster_entry.get("dignitary") or {}
     data = {
         "session_id": session_id,
-        "conference_dignitary_id": conference_dignitary_id,
+        "conference_dignitary_id": roster_entry.get("id"),
         "directory_dignitary_id": roster_entry.get("directory_dignitary_id"),
         "name": source.get("name"),
         "title": source.get("title"),
