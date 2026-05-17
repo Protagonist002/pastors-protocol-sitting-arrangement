@@ -360,7 +360,7 @@ export function Conference() {
               {isAdmin && (
                 <div className="section-card-actions">
                   <button className="btn btn-outline btn-sm" onClick={handleExportArrivals} disabled={exporting}>
-                    {exporting ? 'Preparing...' : 'Download Arrivals Document'}
+                    {exporting ? 'Preparing...' : 'Export Arrivals'}
                   </button>
                 </div>
               )}

@@ -3032,3 +3032,101 @@ img {
     display: none;
   }
 }
+
+@media (max-width: 768px) {
+  .app-header {
+    height: auto;
+    min-height: 76px;
+    padding: 10px 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .header-logo {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .header-logo-title {
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 0.98rem;
+    line-height: 1.05;
+  }
+
+  .header-breadcrumbs {
+    display: none;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .header-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 4px;
+    border-radius: 999px;
+  }
+
+  .header-user-info {
+    display: flex;
+    align-items: center;
+  }
+
+  .header-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+    border-radius: 999px;
+  }
+
+  .role-tag {
+    font-size: 0.5rem;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .header-theme-toggle,
+  .header-menu-toggle {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .header-back-btn {
+    min-height: 34px;
+    padding: 0 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    min-height: 72px;
+    padding: 8px 10px;
+  }
+
+  .header-logo-title {
+    font-size: 0.9rem;
+  }
+
+  .header-actions {
+    gap: 5px;
+  }
+
+  .header-account {
+    padding-right: 6px;
+  }
+
+  .header-back-btn {
+    min-width: 34px;
+    padding: 0 9px;
+  }
+}
