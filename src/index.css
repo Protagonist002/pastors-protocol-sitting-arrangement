@@ -2807,14 +2807,16 @@ img {
 @media (max-width: 900px) {
   .page-header-actions {
     justify-content: flex-start;
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
   }
 
   .page-header-actions .btn {
-    flex: 1 1 auto;
-    width: 100%;
+    flex: 0 1 auto;
+    width: auto;
     min-width: 0;
+    max-width: 100%;
   }
 
   .grid-cards--wide {
@@ -2842,8 +2844,6 @@ img {
     line-height: 1.1;
   }
 
-  .page-header-actions,
-  .section-card-actions,
   .form-actions,
   .modal-list-item,
   .config-footer,
@@ -2852,14 +2852,41 @@ img {
     align-items: stretch;
   }
 
+  .page-header-actions,
+  .section-card-actions {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .page-header-actions .btn,
   .section-card-actions .btn,
   .form-actions .btn,
   .modal-list-item .btn,
-  .config-footer .btn,
-  .section-card-actions > * {
+  .config-footer .btn {
     width: 100%;
     min-width: 0;
+  }
+
+  .page-header-actions .btn,
+  .section-card-actions .btn,
+  .page-header-actions > :not(.btn),
+  .section-card-actions > :not(.btn) {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .page-header-actions .btn:not(.btn-icon),
+  .section-card-actions .btn:not(.btn-icon) {
+    flex: 0 1 auto;
+    align-self: flex-start;
+  }
+
+  .page-header-actions .btn-icon,
+  .section-card-actions .btn-icon {
+    flex: 0 0 auto;
   }
 
   .form-row {
@@ -2969,6 +2996,11 @@ img {
     font-size: 0.5rem;
     padding: 3px 6px;
   }
+
+  .dashboard-hero-action {
+    width: auto;
+    align-self: flex-start;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2998,6 +3030,12 @@ img {
   .attendee-card-actions .btn,
   .attendee-card-actions .inline-status-select {
     width: 100%;
+  }
+
+  .page-header-actions .btn:not(.btn-icon),
+  .section-card-actions .btn:not(.btn-icon) {
+    width: auto;
+    max-width: 100%;
   }
 
   .tab-btn {
