@@ -59,7 +59,7 @@ export function FormField({ label, children }) {
 
 export function RoleTag({ role }) {
   const map = {
-    admin: { c: 'var(--warning-strong)', l: 'Administrator' },
+    admin: { c: 'var(--warning-strong)', l: 'Admin' },
     editor: { c: 'var(--accent-strong)', l: 'Editor' },
     protocol: { c: 'var(--success-strong)', l: 'Protocol Officer' },
     unknown: { c: 'var(--text-muted)', l: 'Loading Role' },
