@@ -2,7 +2,7 @@
 name = "pastors-protocol-api"
 version = "1.0.0"
 description = "Backend API for Pastors' Protocol Central Sitting Arrangement"
-requires-python = ">=3.9, <3.13"
+requires-python = ">=3.10, <3.13"
 dependencies = [
     "fastapi==0.115.0",
     "uvicorn==0.30.6",
