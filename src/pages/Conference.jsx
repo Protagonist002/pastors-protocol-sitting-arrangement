@@ -7,7 +7,7 @@ import { Loader, Modal, ModalHeader, FormField } from '../components/UI';
 import { useConference, useConferenceProtocolAssignments } from '../hooks/useConferences';
 import { useSessions } from '../hooks/useSessions';
 import { useConferenceDignitaries, useDirectoryDignitaries } from '../hooks/useDignitaryDirectory';
-import { formatDisplayDate } from '../lib/formatters';
+import { formatDisplayDate, getInitials } from '../lib/formatters';
 
 function toDateInputValue(value) {
   if (!value || typeof value !== 'string') return '';
@@ -316,7 +316,7 @@ export function Conference() {
                       <div className="attendee-avatar">
                         {dignitary.picture_url
                           ? <img src={dignitary.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : dignitary.name?.[0]?.toUpperCase()}
+                          : getInitials(dignitary.name, '?')}
                       </div>
                       <div className="attendee-info">
                         <div className="attendee-name">{dignitary.name}</div>

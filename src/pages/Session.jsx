@@ -11,7 +11,7 @@ import { useDignitaries } from '../hooks/useAttendees';
 import { useConferenceDignitaries } from '../hooks/useDignitaryDirectory';
 import { useConferences } from '../hooks/useConferences';
 import { useSessions, useSessionData } from '../hooks/useSessions';
-import { formatDisplayDate } from '../lib/formatters';
+import { formatDisplayDate, getInitials } from '../lib/formatters';
 import { auditoriumSupportsSections, getDefaultConfig, getOpenSections, getSectionById, STATUSES, statusColor } from '../lib/constants';
 
 function formatTimeLabel(value) {
@@ -273,7 +273,7 @@ const DignitaryList = memo(function DignitaryList({ auditorium, attendees, canEd
                   <div className="attendee-avatar" style={{ borderColor: `${statusColor[dignitary.status] || 'var(--line-strong)'}55` }}>
                     {dignitary.picture_url
                       ? <img src={dignitary.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : dignitary.name?.[0]?.toUpperCase()}
+                      : getInitials(dignitary.name, '?')}
                   </div>
                   <div className="attendee-info">
                     <div className="attendee-name">{dignitary.name}</div>

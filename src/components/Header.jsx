@@ -2,6 +2,7 @@ import { ArrowLeft, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { getInitials } from '../lib/formatters';
 import { useAuth } from './auth-context';
 import { useTheme } from './theme-context';
 import { RoleTag } from './UI';
@@ -44,13 +45,7 @@ export function Header({ confName, sessionName, backTo, backLabel }) {
 
   const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email || 'Loading...';
   const avatarImage = profile?.picture_url || user?.user_metadata?.picture_url || '';
-  const avatarInitials = displayName
-    .trim()
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'U';
+  const avatarInitials = getInitials(displayName, 'U');
 
   return (
     <>

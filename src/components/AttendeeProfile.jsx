@@ -1,4 +1,5 @@
 import { STATUSES, getSectionById, statusColor } from '../lib/constants';
+import { getInitials } from '../lib/formatters';
 import { ModalHeader } from './UI';
 
 export function AttendeeProfile({ auditorium, atn, canEdit, canManageStatus, onEdit, onStatus, onClose }) {
@@ -15,7 +16,7 @@ export function AttendeeProfile({ auditorium, atn, canEdit, canManageStatus, onE
           <div className="profile-avatar" style={{ border: `3px solid ${statusColor[atn.status] || 'var(--line-strong)'}` }}>
             {atn.picture_url
               ? <img src={atn.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : atn.name?.[0]?.toUpperCase()}
+              : getInitials(atn.name, '?')}
           </div>
           <div style={{ flex: 1 }}>
             <h2 className="profile-name">{atn.name}</h2>

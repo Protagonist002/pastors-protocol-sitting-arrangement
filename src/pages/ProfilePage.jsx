@@ -6,6 +6,7 @@ import { Header } from '../components/Header';
 import { useAuth } from '../components/auth-context';
 import { FormField, Loader } from '../components/UI';
 import { useConferences } from '../hooks/useConferences';
+import { getInitials } from '../lib/formatters';
 import { api } from '../services/apiClient';
 
 function DetailCell({ label, value }) {
@@ -24,16 +25,6 @@ function getRoleLabel(role) {
     protocol: 'Protocol Officer',
   };
   return labels[role] || 'Not available';
-}
-
-function getAvatarInitials(value) {
-  return (value || 'P')
-    .trim()
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'P';
 }
 
 export function ProfilePage() {
@@ -121,7 +112,7 @@ export function ProfilePage() {
 
   const assignmentCount = profileQuery.data?.conference_assignments?.length || 0;
   const pageTitle = isOwnProfile ? 'My Profile' : `${profileQuery.data?.full_name || 'User'} Profile`;
-  const avatarInitials = getAvatarInitials(profileQuery.data?.full_name || user?.email || 'P');
+  const avatarInitials = getInitials(profileQuery.data?.full_name || user?.email, 'P');
   const conferences = conferencesQuery.data || [];
   const headerBackTo = isOwnProfile ? '/' : '/users';
   const headerBackLabel = isOwnProfile ? 'Dashboard' : 'Manage Access';

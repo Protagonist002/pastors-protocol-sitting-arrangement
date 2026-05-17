@@ -34,3 +34,20 @@ export function formatDisplayDate(value, fallback = '') {
   const formatter = getMediumDateFormatter();
   return formatter ? formatter.format(date) : formatFallbackDate(date);
 }
+
+export function getInitials(value, fallback = '?') {
+  const cleaned = String(value || '').trim();
+  if (!cleaned) return fallback;
+
+  const parts = cleaned
+    .split(/[\s@._-]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+  }
+
+  const [firstPart = ''] = parts;
+  return firstPart.slice(0, 2).toUpperCase() || fallback;
+}

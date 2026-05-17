@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { Loader, Modal, ModalHeader, FormField } from '../components/UI';
 import { useAuth } from '../components/auth-context';
 import { useDirectoryDignitaries } from '../hooks/useDignitaryDirectory';
+import { getInitials } from '../lib/formatters';
 
 function DirectoryForm({ init = {}, isEdit, onSave, onCancel, onUploadPhoto }) {
   const [f, setF] = useState({
@@ -95,7 +96,7 @@ function DirectoryForm({ init = {}, isEdit, onSave, onCancel, onUploadPhoto }) {
           <div className="directory-photo-preview" aria-hidden="true">
             {previewUrl
               ? <img src={previewUrl} alt="" className="directory-photo-preview-image" />
-              : <span>{f.name?.[0]?.toUpperCase() || '?'}</span>}
+              : <span>{getInitials(f.name, '?')}</span>}
           </div>
           <div className="directory-photo-fields">
             <input className="input" type="file" accept="image/*" onChange={handlePictureChange} />
@@ -169,7 +170,7 @@ export function DignitaryDirectory() {
                   <div className="attendee-avatar" style={{ borderColor: '#143d2255' }}>
                     {dignitary.picture_url
                       ? <img src={dignitary.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : dignitary.name?.[0]?.toUpperCase()}
+                      : getInitials(dignitary.name, '?')}
                   </div>
                   <div className="attendee-info">
                     <div className="attendee-name">{dignitary.name}</div>

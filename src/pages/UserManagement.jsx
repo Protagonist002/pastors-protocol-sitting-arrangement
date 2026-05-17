@@ -7,6 +7,7 @@ import { Header } from '../components/Header';
 import { FormField, Loader, RoleTag } from '../components/UI';
 import { useConference, useConferenceProtocolAssignments, useConferences } from '../hooks/useConferences';
 import { useConferenceDignitaries } from '../hooks/useDignitaryDirectory';
+import { getInitials } from '../lib/formatters';
 import { api } from '../services/apiClient';
 
 export function UserManagement() {
@@ -247,7 +248,7 @@ export function UserManagement() {
                               <div key={`${selectedConferenceId}-${user.id}`} className="card user-admin-card">
                                 <div className="attendee-card-top">
                                   <div className="attendee-avatar">
-                                    {user.picture_url ? <img src={user.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : user.full_name?.[0]?.toUpperCase()}
+                                    {user.picture_url ? <img src={user.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : getInitials(user.full_name, '?')}
                                   </div>
                                   <div className="attendee-info">
                                     <div className="attendee-name">{user.full_name || 'Unnamed'}</div>
@@ -344,7 +345,7 @@ export function UserManagement() {
                         <div key={`role-${user.id}`} className="card user-admin-card">
                           <div className="attendee-card-top">
                             <div className="attendee-avatar">
-                              {user.picture_url ? <img src={user.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : user.full_name?.[0]?.toUpperCase()}
+                              {user.picture_url ? <img src={user.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : getInitials(user.full_name, '?')}
                             </div>
                             <div className="attendee-info">
                               <div className="attendee-name">{user.full_name || 'Unnamed'}</div>
