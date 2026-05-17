@@ -1,7 +1,8 @@
+import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { FormField } from '../components/UI';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export function AuthPage() {
   const navigate = useNavigate();
@@ -9,35 +10,43 @@ export function AuthPage() {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [name, setName] = useState('');
+  const [extension, setExtension] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [err, setErr] = useState('');
 
   const submit = async () => {
-    if (!email || !pass) { setErr('Please fill in all fields'); return; }
-    if (mode === 'register' && !name) { setErr('Full name is required'); return; }
-    
+    if (!email || !pass) {
+      setErr('Please fill in all required fields.');
+      return;
+    }
+    if (mode === 'register' && (!name || !extension)) {
+      setErr('Full name and extension are required to create a protocol profile.');
+      return;
+    }
+
     setLoading(true);
     setErr('');
-    
+
     try {
       if (mode === 'login') {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) throw error;
-        // Explicitly navigate after successful login
-        if (data?.session) {
-          navigate('/');
-        }
+        if (data?.session) navigate('/');
       } else {
         const { error } = await supabase.auth.signUp({
           email,
           password: pass,
           options: {
-            data: { full_name: name }
-          }
+            data: {
+              full_name: name,
+              extension,
+            },
+          },
         });
         if (error) throw error;
         setMode('login');
+        setPass('');
         setErr('Registration successful. Please sign in.');
       }
     } catch (error) {
@@ -53,70 +62,84 @@ export function AuthPage() {
       <div className="auth-container fade-in">
         <div className="auth-header">
           <img src="/logo.png" alt="GLT Logo" className="auth-logo" />
-          <h1 className="auth-title">
-            Pastors&apos; Protocol<br/>Central Sitting Arrangement
-          </h1>
-          <p className="auth-subtitle">DIGNITARY SEATING MANAGEMENT SYSTEM</p>
+          <h1 className="auth-title">Dignitary Management System</h1>
         </div>
 
         <div className="card auth-card">
           <div className="auth-tabs">
-            {['login','register'].map(m => (
-              <button key={m} onClick={() => { setMode(m); setErr(''); }}
-                className={`auth-tab ${mode === m ? 'active' : ''}`}>
-                {m === 'login' ? 'Sign In' : 'Register'}
+            {['login', 'register'].map((currentMode) => (
+              <button
+                key={currentMode}
+                onClick={() => {
+                  setMode(currentMode);
+                  setErr('');
+                }}
+                className={`auth-tab ${mode === currentMode ? 'active' : ''}`}
+              >
+                {currentMode === 'login' ? 'Sign In' : 'Create Account'}
               </button>
             ))}
           </div>
 
-          {mode==='register' && (
-            <FormField label="Full Name">
-              <input className="input" placeholder="John Mensah" value={name} onChange={e=>setName(e.target.value)}/>
-            </FormField>
+          {mode === 'register' && (
+            <>
+              <FormField label="Full Name">
+                <input className="input" placeholder="John Mensah" value={name} onChange={(e) => setName(e.target.value)} />
+              </FormField>
+              <FormField label="Extension">
+                <input className="input" placeholder="Accra Central" value={extension} onChange={(e) => setExtension(e.target.value)} />
+              </FormField>
+            </>
           )}
+
           <FormField label="Email">
-            <input className="input" type="email" placeholder="officer@church.org" value={email}
-              onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()}/>
+            <input
+              className="input"
+              type="email"
+              placeholder="officer@church.org"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submit()}
+            />
           </FormField>
+
           <FormField label="Password">
-            <div style={{ position:'relative' }}>
-              <input className="input" type={showPass ? 'text' : 'password'} placeholder="••••••••" value={pass}
-                onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()}
-                style={{ paddingRight: 42 }}/>
-              <button type="button" onClick={() => setShowPass(v => !v)}
-                style={{
-                  position:'absolute', right:8, top:'50%', transform:'translateY(-50%)',
-                  background:'transparent', border:'none', cursor:'pointer',
-                  color:'#4f6b56', fontSize:16, padding:'4px 6px', lineHeight:1,
-                  transition:'color .15s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.color = '#c9a84c'}
-                onMouseLeave={e => e.currentTarget.style.color = '#4f6b56'}
-                tabIndex={-1}
-                aria-label={showPass ? 'Hide password' : 'Show password'}>
-                {showPass ? '🙈' : '👁'}
+            <div className="auth-password-wrap">
+              <input
+                className="input"
+                type={showPass ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={pass}
+                onChange={(e) => setPass(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+              />
+              <button
+                type="button"
+                className="auth-password-toggle"
+                onClick={() => setShowPass((value) => !value)}
+                aria-label={showPass ? 'Hide password' : 'Show password'}
+              >
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </FormField>
 
-          {err && <p className="auth-error" style={{ color: err.includes('successful') ? '#22c55e' : '#ef4444' }}>{err}</p>}
-          
-          {!isSupabaseConfigured && (
-            <p className="auth-error" style={{ color: '#f59e0b', background: '#f59e0b11', padding: '10px', borderRadius: '6px', border: '1px solid #f59e0b33' }}>
-              Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.
+          {err && (
+            <p className="auth-error" style={{ color: err.includes('successful') ? 'var(--success-strong)' : 'var(--danger-strong)' }}>
+              {err}
             </p>
           )}
 
-          <button className="btn btn-gold" style={{ width:'100%', marginTop:4, padding:'11px' }}
-            onClick={submit} disabled={loading || !isSupabaseConfigured}>
-            {loading ? 'Please wait…' : mode==='login' ? 'Sign In' : 'Create Account'}
+          {!isSupabaseConfigured && (
+            <p className="auth-error auth-error--warning">
+              Supabase is not configured. Please set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+            </p>
+          )}
+
+          <button className="btn btn-gold auth-submit-btn" onClick={submit} disabled={loading || !isSupabaseConfigured}>
+            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Protocol Profile'}
           </button>
 
-          {mode==='register' && (
-            <p className="auth-note">
-              New accounts receive Protocol Member access (view-only).<br/>Contact admin to request editing permissions.
-            </p>
-          )}
         </div>
       </div>
     </div>

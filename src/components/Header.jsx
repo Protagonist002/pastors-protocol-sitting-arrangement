@@ -1,26 +1,56 @@
+import { ArrowLeft, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useState } from 'react';
-import { useAuth } from './auth-context';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from './auth-context';
+import { useTheme } from './theme-context';
 import { RoleTag } from './UI';
-import { LogOut, Menu, X } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
 
-export function Header({ confName, sessionName }) {
-  const { user, profile, reloadProfile } = useAuth();
+function getDefaultBackTarget(pathname) {
+  if (pathname === '/profile' || pathname === '/dignitaries' || pathname === '/users') return '/';
+  if (pathname.startsWith('/conference/')) return '/';
+  if (pathname.startsWith('/users/')) return '/users';
+  if (pathname.startsWith('/session/')) return '/';
+  return null;
+}
+
+function getDefaultBackLabel(pathname) {
+  if (pathname === '/profile' || pathname === '/dignitaries' || pathname === '/users') return 'Dashboard';
+  if (pathname.startsWith('/conference/')) return 'Dashboard';
+  if (pathname.startsWith('/users/')) return 'Manage Access';
+  if (pathname.startsWith('/session/')) return 'Conference';
+  return 'Back';
+}
+
+export function Header({ confName, sessionName, backTo, backLabel }) {
+  const { user, profile, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const resolvedBackTo = backTo || getDefaultBackTarget(location.pathname);
+  const resolvedBackLabel = backLabel || getDefaultBackLabel(location.pathname);
+  const showBackButton = Boolean(resolvedBackTo);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
 
-  const handleRefreshProfile = async () => {
-    await reloadProfile();
+  const handleBack = () => {
+    if (!resolvedBackTo) return;
+    setDrawerOpen(false);
+    navigate(resolvedBackTo);
   };
 
-  const isDashboard = location.pathname === '/';
-  const roleColor = profile?.role === 'admin' ? '#c9a84c' : profile?.role === 'editor' ? '#2471a3' : '#27ae60';
+  const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email || 'Loading...';
+  const avatarImage = profile?.picture_url || user?.user_metadata?.picture_url || '';
+  const avatarInitials = displayName
+    .trim()
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'U';
 
   return (
     <>
@@ -28,101 +58,120 @@ export function Header({ confName, sessionName }) {
         <div className="header-logo" onClick={() => navigate('/')}>
           <img src="/logo.png" alt="GLT Logo" />
           <div>
-            <div className="header-logo-title">Pastors&apos; Protocol</div>
-            <div className="header-logo-sub">Central Sitting Arrangement</div>
+            <div className="header-logo-title">Dignitary Management System</div>
           </div>
         </div>
 
         <div className="header-breadcrumbs">
-          <span className="header-breadcrumb-sep">/</span>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/')}
-            style={{ color: isDashboard ? '#c9a84c' : '#8cb398', fontSize: 12 }}>Conferences</button>
-          {confName && <>
-            <span className="header-breadcrumb-sep">/</span>
-            <button className="btn btn-ghost btn-sm"
-              style={{ color: !sessionName ? '#c9a84c' : '#8cb398', fontSize: 12,
-                maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {confName}
-            </button>
-          </>}
-          {sessionName && <>
-            <span className="header-breadcrumb-sep">/</span>
-            <span style={{ fontSize: 12, color: '#c9a84c', maxWidth: 160,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {sessionName}
-            </span>
-          </>}
+          {confName && (
+            <>
+              <span className="header-breadcrumb-sep">/</span>
+              <button className="btn btn-ghost btn-sm header-crumb-btn" onClick={() => navigate(-1)}>
+                {confName}
+              </button>
+            </>
+          )}
+          {sessionName && (
+            <>
+              <span className="header-breadcrumb-sep">/</span>
+              <span className="header-crumb-current">{sessionName}</span>
+            </>
+          )}
         </div>
 
         <div className="header-actions">
-          <div className="header-user-info">
-            <div className="header-user-name">{profile?.full_name || user?.email || 'Loading...'}</div>
-            <RoleTag role={profile?.role}/>
-          </div>
-          <div className="header-avatar"
-            style={{ background: `${roleColor}22`, border: `2px solid ${roleColor}55`, flexShrink: 0 }}>
-            {(profile?.full_name || user?.email)?.[0]?.toUpperCase()}
-          </div>
-          <button className="btn btn-ghost btn-icon" onClick={handleRefreshProfile} title="Refresh profile" style={{ fontSize: 18 }}>
-            ↻
+          <button className="header-theme-toggle btn btn-ghost btn-icon" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
-          <button className="header-logout-btn btn btn-ghost btn-icon" onClick={handleLogout} title="Sign out">
-            <LogOut size={18} color="#ef4444" />
-          </button>
-          <button className="header-mobile-toggle" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
+
+          {showBackButton && (
+            <button
+              className="btn btn-ghost header-back-btn"
+              onClick={handleBack}
+              aria-label={`Back to ${resolvedBackLabel}`}
+            >
+              <ArrowLeft size={16} />
+              <span className="header-back-label">{resolvedBackLabel}</span>
+            </button>
+          )}
+
+          <div className="header-account">
+            <div className="header-avatar">
+              {avatarImage ? (
+                <img src={avatarImage} alt="" className="header-avatar-image" />
+              ) : (
+                avatarInitials
+              )}
+            </div>
+            <div className="header-user-info">
+              <RoleTag role={profile?.role} />
+            </div>
+          </div>
+
+          <button className="header-menu-toggle btn btn-ghost btn-icon" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
             <Menu size={20} />
           </button>
         </div>
       </header>
 
-      {/* Mobile drawer overlay */}
-      <div className={`header-drawer-overlay ${drawerOpen ? '' : 'hidden'}`}
-        onClick={() => setDrawerOpen(false)} />
+      <div className={`header-drawer-overlay ${drawerOpen ? '' : 'hidden'}`} onClick={() => setDrawerOpen(false)} />
       <div className={`header-mobile-drawer ${drawerOpen ? '' : 'hidden'}`}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <div className="header-logo-title" style={{ fontSize:16 }}>Menu</div>
-          <button className="btn btn-ghost" onClick={() => setDrawerOpen(false)} style={{ padding:4 }}>
-            <X size={20} />
+        <div className={`header-drawer-top ${showBackButton ? '' : 'header-drawer-top--end'}`}>
+          {showBackButton && (
+            <button className="btn btn-ghost header-drawer-link header-drawer-link--back" onClick={handleBack}>
+              <ArrowLeft size={16} />
+              <span>{resolvedBackLabel}</span>
+            </button>
+          )}
+          <button className="btn btn-ghost btn-icon" onClick={() => setDrawerOpen(false)}>
+            <X size={18} />
           </button>
         </div>
 
-        {/* User info in drawer */}
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 0', borderBottom:'1px solid #143d22', marginBottom:12 }}>
-          <div className="header-avatar"
-            style={{ background: `${roleColor}22`, border: `2px solid ${roleColor}55` }}>
-            {(profile?.full_name || user?.email)?.[0]?.toUpperCase()}
+        <div className="header-drawer-profile">
+          <div className="header-avatar">
+            {avatarImage ? (
+              <img src={avatarImage} alt="" className="header-avatar-image" />
+            ) : (
+              avatarInitials
+            )}
           </div>
           <div>
-            <div className="header-user-name">{profile?.full_name || user?.email}</div>
-            <RoleTag role={profile?.role}/>
+            <div className="header-user-name">{displayName}</div>
+            <RoleTag role={profile?.role} />
           </div>
         </div>
 
-        {/* Nav links in drawer */}
-        <button className="btn btn-ghost" style={{ width:'100%', justifyContent:'flex-start', padding:'10px 8px', color: isDashboard ? '#c9a84c' : '#8cb398' }}
-          onClick={() => { navigate('/'); setDrawerOpen(false); }}>
-          📋 Conferences
+        <button
+          className="btn btn-ghost header-drawer-link"
+          style={{ color: location.pathname === '/profile' ? 'var(--accent-strong)' : undefined }}
+          onClick={() => { navigate('/profile'); setDrawerOpen(false); }}
+        >
+          My Profile
         </button>
-        {profile?.role === 'admin' && (
-          <button className="btn btn-ghost" style={{ width:'100%', justifyContent:'flex-start', padding:'10px 8px', color: location.pathname === '/users' ? '#c9a84c' : '#8cb398' }}
-            onClick={() => { navigate('/users'); setDrawerOpen(false); }}>
-            👥 Users
+
+        {isAdmin && (
+          <button
+            className="btn btn-ghost header-drawer-link"
+            style={{ color: location.pathname === '/dignitaries' ? 'var(--accent-strong)' : undefined }}
+            onClick={() => { navigate('/dignitaries'); setDrawerOpen(false); }}
+          >
+            Dignitary
           </button>
-        )}
-        {confName && (
-          <button className="btn btn-ghost" style={{ width:'100%', justifyContent:'flex-start', padding:'10px 8px', color: !sessionName ? '#c9a84c' : '#8cb398' }}
-            onClick={() => setDrawerOpen(false)}>
-            📁 {confName}
-          </button>
-        )}
-        {sessionName && (
-          <div style={{ padding:'10px 8px', color:'#c9a84c', fontSize:13 }}>
-            🪑 {sessionName}
-          </div>
         )}
 
-        <div style={{ marginTop:'auto', paddingTop:20, borderTop:'1px solid #143d22' }}>
-          <button className="btn btn-outline" style={{ width:'100%' }} onClick={handleLogout}>
+        {isAdmin && (
+          <button
+            className="btn btn-ghost header-drawer-link"
+            style={{ color: location.pathname === '/users' ? 'var(--accent-strong)' : undefined }}
+            onClick={() => { navigate('/users'); setDrawerOpen(false); }}
+          >
+            Manage Access
+          </button>
+        )}
+
+        <div className="header-drawer-footer">
+          <button className="btn btn-outline" style={{ width: '100%' }} onClick={handleLogout}>
             <LogOut size={14} /> Sign Out
           </button>
         </div>

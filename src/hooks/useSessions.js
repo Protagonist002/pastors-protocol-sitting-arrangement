@@ -1,7 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/apiClient';
+import { supabase } from '../lib/supabase';
 
-/* ── List sessions for a conference ── */
+function errorMatchesMissingField(error, relationName, fieldName) {
+  const detail = error?.response?.data?.detail;
+  const message = typeof detail === 'string' ? detail : JSON.stringify(detail || error?.message || '');
+  const haystack = message.toLowerCase();
+  return haystack.includes(relationName.toLowerCase()) && haystack.includes(fieldName.toLowerCase());
+}
+
 export function useSessions(confId) {
   const queryClient = useQueryClient();
 
@@ -15,25 +23,57 @@ export function useSessions(confId) {
     enabled: !!confId,
   });
 
+  useEffect(() => {
+    if (!confId) return undefined;
+
+    const channel = supabase.channel(`public:sessions:${confId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions', filter: `conference_id=eq.${confId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['sessions', confId] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [confId, queryClient]);
+
   const createSession = useMutation({
     mutationFn: async (newSess) => {
-      const { data } = await api.post(`/conferences/${confId}/sessions`, newSess);
-      return data;
+      try {
+        const { data } = await api.post(`/conferences/${confId}/sessions`, newSess);
+        return data;
+      } catch (error) {
+        if (Object.prototype.hasOwnProperty.call(newSess, 'time') && errorMatchesMissingField(error, 'sessions', 'time')) {
+          const { time, ...fallbackPayload } = newSess;
+          const { data } = await api.post(`/conferences/${confId}/sessions`, fallbackPayload);
+          return data;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       if (confId) queryClient.invalidateQueries({ queryKey: ['sessions', confId] });
       queryClient.invalidateQueries({ queryKey: ['conferences'] });
-    }
+    },
   });
 
   const updateSession = useMutation({
     mutationFn: async ({ id, data }) => {
-      const { data: result } = await api.patch(`/sessions/${id}`, data);
-      return result;
+      try {
+        const { data: result } = await api.patch(`/sessions/${id}`, data);
+        return result;
+      } catch (error) {
+        if (Object.prototype.hasOwnProperty.call(data, 'time') && errorMatchesMissingField(error, 'sessions', 'time')) {
+          const { time, ...fallbackPayload } = data;
+          const { data: result } = await api.patch(`/sessions/${id}`, fallbackPayload);
+          return result;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       if (confId) queryClient.invalidateQueries({ queryKey: ['sessions', confId] });
-    }
+    },
   });
 
   const updateSeatingConfig = useMutation({
@@ -41,9 +81,10 @@ export function useSessions(confId) {
       const { data } = await api.patch(`/sessions/${sessionId}/seating-config`, config);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, { sessionId }) => {
       if (confId) queryClient.invalidateQueries({ queryKey: ['sessions', confId] });
-    }
+      if (sessionId) queryClient.invalidateQueries({ queryKey: ['sessionData', sessionId] });
+    },
   });
 
   const deleteSession = useMutation({
@@ -53,7 +94,7 @@ export function useSessions(confId) {
     onSuccess: () => {
       if (confId) queryClient.invalidateQueries({ queryKey: ['sessions', confId] });
       queryClient.invalidateQueries({ queryKey: ['conferences'] });
-    }
+    },
   });
 
   return {
@@ -65,7 +106,6 @@ export function useSessions(confId) {
   };
 }
 
-/* ── Fetch a single session by ID ── */
 export function useSession(sessionId) {
   return useQuery({
     queryKey: ['session', sessionId],
@@ -78,18 +118,33 @@ export function useSession(sessionId) {
   });
 }
 
-/* ── Fetch session data + parent conference (efficient: 2 API calls max) ── */
 export function useSessionData(sessionId) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!sessionId) return undefined;
+
+    const channel = supabase.channel(`public:session:${sessionId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['sessionData', sessionId] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId, queryClient]);
+
   return useQuery({
     queryKey: ['sessionData', sessionId],
     queryFn: async () => {
       if (!sessionId) return null;
-      // Fetch the session directly via GET /api/sessions/{id}
       const { data: session } = await api.get(`/sessions/${sessionId}`);
       if (!session) return null;
-      // Fetch the parent conference
-      const { data: conf } = await api.get(`/conferences/${session.conference_id}`);
-      return { session, conf };
+      return {
+        session,
+        conf: session.conference || null,
+      };
     },
     enabled: !!sessionId,
   });

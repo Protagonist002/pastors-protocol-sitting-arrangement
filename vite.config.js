@@ -18,5 +18,16 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
+          if (id.includes('@supabase') || id.includes('@tanstack') || id.includes('axios')) return 'vendor-data';
+          if (id.includes('lucide-react')) return 'vendor-ui';
+          return 'vendor';
+        },
+      },
+    },
   },
 })

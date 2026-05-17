@@ -1,26 +1,47 @@
 import os
 from pathlib import Path
-from supabase import create_client, Client
-from pydantic_settings import BaseSettings
 
-# Find the .env file (works for both local dev and Vercel serverless)
+from supabase import Client, create_client
+
+
 _env_path = Path(__file__).resolve().parent.parent / ".env"
 
-class Settings(BaseSettings):
-    supabase_url: str
-    supabase_key: str
-    
-    class Config:
-        env_file = str(_env_path) if _env_path.exists() else None
+
+def _load_env_file(env_path: Path) -> None:
+    """
+    Load backend/.env without requiring python-dotenv or pydantic-settings.
+    Existing environment variables win so deployed environments still behave normally.
+    """
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+_load_env_file(_env_path)
+
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_KEY")
 
 try:
-    settings = Settings()
-    supabase: Client = create_client(settings.supabase_url, settings.supabase_key)
+    if not supabase_url or not supabase_key:
+        raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set.")
+    supabase: Client = create_client(supabase_url, supabase_key)
 except Exception as e:
     import traceback
+
     traceback.print_exc()
     print(f"Warning: Failed to initialize Supabase client. Check .env variables. Details: {e}")
     supabase = None
+
 
 def get_supabase() -> Client:
     return supabase

@@ -1,51 +1,73 @@
-import { SECTIONS, DEFAULT_CONFIG, STATUSES, statusColor } from '../lib/constants';
+import { memo, useMemo } from 'react';
 
-export function SeatGrid({ sectionId, cfg, attendees, canEdit, onSeatClick }) {
-  const sec = SECTIONS.find(s => s.id === sectionId);
-  // cfg is now a JSONB object like { choir: { rows: 5, cols: 4 }, ... }
-  const cfgMap = cfg || {};
-  const c   = cfgMap[sectionId] || DEFAULT_CONFIG[sectionId] || { rows:5, cols:5 };
-  
-  const getAtt = (r, col) => attendees.find(d => d.section === sectionId && d.row_num === r && d.col_num === col);
+import { STATUSES, getEffectiveConfig, getSectionById, statusColor } from '../lib/constants';
+
+export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, attendees, canEdit, onSeatClick }) {
+  const sec = getSectionById(auditorium, sectionId);
+  const cfgMap = getEffectiveConfig(auditorium, cfg);
+  const sectionConfig = cfgMap[sectionId] || { rows: 5, cols: 5 };
+  const statusLabels = useMemo(() => {
+    const labels = {};
+    STATUSES.forEach((statusOption) => {
+      labels[statusOption.id] = statusOption.label;
+    });
+    return labels;
+  }, []);
+  const seatAssignments = useMemo(() => {
+    const assignments = {};
+    attendees.forEach((dignitary) => {
+      if (dignitary.section !== sectionId || !dignitary.row_num || !dignitary.col_num) return;
+      assignments[`${dignitary.row_num}-${dignitary.col_num}`] = dignitary;
+    });
+    return assignments;
+  }, [attendees, sectionId]);
+  const rows = useMemo(() => Array.from({ length: sectionConfig.rows }, (_, index) => index + 1), [sectionConfig.rows]);
+  const cols = useMemo(() => Array.from({ length: sectionConfig.cols }, (_, index) => index + 1), [sectionConfig.cols]);
 
   return (
     <div className="seat-grid-wrap fade-in">
       <div className="seat-grid-header">
-        <div className="seat-grid-legend-dot" style={{ width:12, height:12, borderRadius:3, background:sec?.color }}/>
+        <div className="seat-grid-legend-dot" style={{ width: 12, height: 12, borderRadius: 3, background: sec?.color }} />
         <h4 className="seat-grid-title">{sec?.label}</h4>
-        <span className="seat-grid-info">{c.rows} rows × {c.cols} cols = {c.rows * c.cols} seats</span>
+        <span className="seat-grid-info">{sectionConfig.rows} rows x {sectionConfig.cols} seats</span>
         <div className="seat-grid-legend">
-          {STATUSES.map(s => (
-            <div key={s.id} className="seat-grid-legend-item">
-              <div className="seat-grid-legend-dot" style={{ background:s.color }}/>{s.label}
+          {STATUSES.map((statusOption) => (
+            <div key={statusOption.id} className="seat-grid-legend-item">
+              <div className="seat-grid-legend-dot" style={{ background: statusOption.color }} />
+              {statusOption.label}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="seat-grid-scroll">
-        <div className="seat-grid-cols">
-          {Array.from({ length:c.cols }, (_, i) => (
-            <div key={i} className="seat-grid-col-label">{i+1}</div>
+        <div className="seat-grid-scroll">
+          <div className="seat-grid-cols">
+          {cols.map((col) => (
+            <div key={col} className="seat-grid-col-label">{col}</div>
           ))}
         </div>
-        {Array.from({ length:c.rows }, (_, r) => (
-          <div key={r} className="seat-grid-row">
-            <div className="seat-grid-row-label">{r+1}</div>
-            {Array.from({ length:c.cols }, (_, col) => {
-              const d = getAtt(r+1, col+1);
+
+        {rows.map((row) => (
+          <div key={row} className="seat-grid-row">
+            <div className="seat-grid-row-label">{row}</div>
+            {cols.map((col) => {
+              const dignitary = seatAssignments[`${row}-${col}`];
               return (
-                <div key={col}
-                  className={`seat ${d ? `occ-${d.status}` : 'empty'}`}
-                  onClick={() => onSeatClick(r+1, col+1, d)}
-                  title={d ? `${d.name} — ${STATUSES.find(s=>s.id===d.status)?.label}` : `Seat ${r+1}-${col+1} (Empty${canEdit?' • click to assign':''})`}
-                  style={{ background: d ? `${statusColor[d.status]}1a` : '#0a1a10',
-                    borderColor: d ? `${statusColor[d.status]}55` : '#143d22' }}>
-                  {d ? (
-                    <span style={{ color:statusColor[d.status], fontSize:8, fontWeight:700 }}>
-                      {d.name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
+                <div
+                  key={col}
+                  className={`seat ${dignitary ? `occ-${dignitary.status}` : 'empty'}`}
+                  onClick={() => onSeatClick(row, col, dignitary)}
+                  title={dignitary ? `${dignitary.name} - ${statusLabels[dignitary.status]}` : `Seat ${row}-${col}`}
+                  style={{
+                    background: dignitary ? `${statusColor[dignitary.status]}1a` : 'var(--surface-soft)',
+                    borderColor: dignitary ? `${statusColor[dignitary.status]}55` : 'var(--line-strong)',
+                  }}
+                >
+                  {dignitary ? (
+                    <span style={{ color: statusColor[dignitary.status], fontSize: 8, fontWeight: 700 }}>
+                      {dignitary.name?.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()}
                     </span>
-                  ) : canEdit ? <span style={{ color:'#143d22', fontSize:16, lineHeight:1 }}>·</span> : null}
+                  ) : canEdit ? <span style={{ color: 'var(--text-faint)', fontSize: 16, lineHeight: 1 }}>+</span> : null}
                 </div>
               );
             })}
@@ -53,8 +75,8 @@ export function SeatGrid({ sectionId, cfg, attendees, canEdit, onSeatClick }) {
         ))}
       </div>
       <p className="seat-grid-hint">
-        {canEdit ? 'Click occupied seat to view profile · Click empty seat to assign a dignitary' : 'Click a seat to view profile'}
+        {canEdit ? 'Click an occupied seat to view the profile, or an empty seat to assign a dignitary.' : 'Click a seat to view the dignitary profile.'}
       </p>
     </div>
   );
-}
+});

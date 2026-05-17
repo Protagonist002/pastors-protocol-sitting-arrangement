@@ -1,141 +1,416 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import { useDeferredValue, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../components/auth-context';
-import { Loader, Modal, ModalHeader, FormField } from '../components/UI';
 import { Header } from '../components/Header';
-import { format } from 'date-fns';
-import { useConference } from '../hooks/useConferences';
+import { Loader, Modal, ModalHeader, FormField } from '../components/UI';
+import { useConference, useConferenceProtocolAssignments } from '../hooks/useConferences';
 import { useSessions } from '../hooks/useSessions';
+import { useConferenceDignitaries, useDirectoryDignitaries } from '../hooks/useDignitaryDirectory';
+import { formatDisplayDate } from '../lib/formatters';
+
+function toDateInputValue(value) {
+  if (!value || typeof value !== 'string') return '';
+  return value.slice(0, 10);
+}
+
+function toTimeInputValue(value) {
+  if (!value || typeof value !== 'string') return '';
+  return value.slice(0, 5);
+}
+
+function handleTimeSelection(input, onSelect) {
+  const nextValue = input.value;
+  onSelect(nextValue);
+  if (!nextValue) return;
+  window.requestAnimationFrame(() => {
+    input.blur();
+  });
+}
 
 function SessionForm({ isEdit, onSave, onCancel }) {
-  const [f, setF] = useState({ name:'', date:'', time:'', description:'' });
+  const [f, setF] = useState({ name: '', date: '', time: '', description: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const s = (k, v) => setF(x => ({ ...x, [k]:v }));
+  const setField = (key, value) => setF((current) => ({ ...current, [key]: value }));
 
   const handleSave = async () => {
     if (!f.name) return;
     setSaving(true);
     setError('');
     try {
-      const cleaned = Object.fromEntries(
-        Object.entries(f).map(([k, v]) => [k, v === '' ? null : v])
-      );
+      const cleaned = Object.fromEntries(Object.entries(f).filter(([, value]) => value !== ''));
       await onSave(cleaned);
     } catch (err) {
       const detail = err?.response?.data?.detail;
-      const msg = typeof detail === 'string' ? detail
-        : Array.isArray(detail) ? detail.map(d => d.msg || JSON.stringify(d)).join(', ')
-        : err?.message || 'Failed to create session';
+      const msg = typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((item) => item.msg || JSON.stringify(item)).join(', ')
+          : err?.message || 'Failed to create session';
       setError(msg);
     } finally {
       setSaving(false);
     }
   };
-  
-  return <>
-    <ModalHeader title={isEdit ? 'Edit Session' : 'New Session'} onClose={onCancel}/>
-    <div className="modal-body">
-      {error && <p style={{ color: '#ef4444', marginBottom: 12, fontSize: 13, padding: 8, background: '#ef444422', borderRadius: 6 }}>{error}</p>}
-      <FormField label="Session Name *"><input className="input" placeholder="Opening Night" value={f.name} onChange={e=>s('name',e.target.value)}/></FormField>
-      <div className="form-grid-2">
-        <FormField label="Date"><input className="input" type="date" value={f.date} onChange={e=>s('date',e.target.value)}/></FormField>
-        <FormField label="Time"><input className="input" type="time" value={f.time} onChange={e=>s('time',e.target.value)}/></FormField>
-      </div>
-      <FormField label="Description"><textarea className="input" rows={3} placeholder="Brief overview…" value={f.description} onChange={e=>s('description',e.target.value)} style={{ resize:'vertical' }}/></FormField>
-      <div className="form-actions">
-        <button className="btn btn-outline" onClick={onCancel} disabled={saving}>Cancel</button>
-        <button className="btn btn-gold" onClick={handleSave} disabled={!f.name || saving}>{saving ? 'Creating...' : (isEdit ? 'Save Changes' : 'Add Session')}</button>
-      </div>
-    </div>
-  </>;
-}
-
-export function Conference() {
-  const { confId } = useParams();
-  const navigate = useNavigate();
-  const { isEditorOrAdmin } = useAuth();
-  const [showNew, setShowNew] = useState(false);
-
-  const { data: conf, isLoading: isLoadingConf } = useConference(confId);
-
-  const { sessionsQuery, createSession, deleteSession } = useSessions(confId);
-  const { data: sessions, isLoading: isLoadingSessions } = sessionsQuery;
-
-  if (isLoadingConf || isLoadingSessions) return <Loader text="Loading Conference Details..." />;
-  if (!conf) return <div className="empty-state" style={{ marginTop:100 }}>Conference not found.</div>;
-
-  const sessList = sessions || [];
 
   return (
-    <div>
-      <Header confName={conf.name} />
-      
-      <div className="page-container fade-in">
-        <div className="page-header page-header--start">
-          <div>
-            <h1 className="page-title">{conf.name}</h1>
-            <p className="page-subtitle">
-              {conf.date ? format(new Date(conf.date), 'dd MMM yyyy') : '—'} 
-              {conf.venue ? ` • ${conf.venue}` : ''}
-            </p>
-            {conf.description && <p className="page-description">{conf.description}</p>}
-          </div>
-          <div style={{ display:'flex', gap:8 }}>
-            {isEditorOrAdmin && <button className="btn btn-gold btn-sm" onClick={() => setShowNew(true)}>+ Add Session</button>}
-          </div>
+    <>
+      <ModalHeader title={isEdit ? 'Edit Session' : 'New Session'} onClose={onCancel} />
+      <div className="modal-body">
+        {error && <p className="auth-error">{error}</p>}
+        <FormField label="Session Name">
+          <input className="input" placeholder="Opening Night" value={f.name} onChange={(e) => setField('name', e.target.value)} />
+        </FormField>
+        <div className="form-grid-2">
+          <FormField label="Date">
+            <input className="input" type="date" value={toDateInputValue(f.date)} onChange={(e) => setField('date', e.target.value)} />
+          </FormField>
+          <FormField label="Time">
+            <input className="input" type="time" step="60" value={toTimeInputValue(f.time)} onChange={(e) => handleTimeSelection(e.currentTarget, (value) => setField('time', value))} />
+          </FormField>
+        </div>
+        <FormField label="Description">
+          <textarea className="input" rows={3} placeholder="Short description..." value={f.description} onChange={(e) => setField('description', e.target.value)} style={{ resize: 'vertical' }} />
+        </FormField>
+        <div className="form-actions">
+          <button className="btn btn-outline" onClick={onCancel} disabled={saving}>Cancel</button>
+          <button className="btn btn-gold" onClick={handleSave} disabled={!f.name || saving}>{saving ? 'Creating...' : (isEdit ? 'Save Changes' : 'Add Session')}</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AddConferenceDignitaryModal({ available, adding, loading, onAdd, onClose, onOpenDirectory }) {
+  const [q, setQ] = useState('');
+  const deferredQuery = useDeferredValue(q.trim().toLowerCase());
+
+  const filtered = available.filter((dignitary) => {
+    if (!deferredQuery) return true;
+    return [dignitary.name, dignitary.title, dignitary.church, dignitary.extension]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(deferredQuery));
+  });
+
+  return (
+    <>
+      <ModalHeader title="Add Dignitaries To Conference" sub="Pick from the saved dignitary directory." onClose={onClose} />
+      <div className="modal-body">
+        <div className="filter-bar" style={{ marginBottom: 16 }}>
+          <input className="input" placeholder="Search directory..." value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
+          {onOpenDirectory && <button className="btn btn-outline btn-sm" onClick={onOpenDirectory}>Open Directory</button>}
         </div>
 
-        {sessList.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📋</div>
-            <p className="empty-state-text">No sessions yet</p>
-            {isEditorOrAdmin && <p className="empty-state-sub">Add sessions to configure seating arrangements</p>}
+        {loading ? (
+          <Loader text="Loading directory..." />
+        ) : filtered.length === 0 ? (
+          <div className="empty-state" style={{ minHeight: 220 }}>
+            <div className="empty-state-icon">Roster</div>
+            <p className="empty-state-text">No unassigned directory dignitaries found</p>
+            <p className="empty-state-sub">Create more master dignitaries in the directory, then return here to attach them to this conference.</p>
           </div>
         ) : (
-          <div className="grid-cards">
-            {sessList.map((s, i) => (
-              <div key={s.id} className="card card-hover session-card"
-                style={{ animationDelay:`${i*.05}s` }}
-                onClick={() => navigate(`/session/${s.id}`)}>
-                <div className="card-top-row">
-                  <div>
-                    <h3 className="session-card-title">{s.name}</h3>
-                    <p className="session-card-meta">
-                      {s.date ? format(new Date(s.date), 'dd MMM yyyy') : '—'}
-                      {s.time ? ` at ${s.time}` : ''}
-                    </p>
-                  </div>
-                  {isEditorOrAdmin && (
-                    <button className="btn btn-ghost btn-sm" style={{ color:'#ef4444', flexShrink:0 }}
-                      onClick={e => { e.stopPropagation(); if (window.confirm('Delete session?')) deleteSession.mutate(s.id); }}>🗑</button>
+          <div className="modal-list-stack">
+            {filtered.map((dignitary) => (
+              <div key={dignitary.id} className="card modal-list-item">
+                <div style={{ minWidth: 0 }}>
+                  <div className="profile-summary-title">{dignitary.name}</div>
+                  <div className="profile-summary-subtitle">{dignitary.title}</div>
+                  {(dignitary.church || dignitary.extension) && (
+                    <div className="profile-summary-meta">{dignitary.church || 'No church listed'}{dignitary.extension ? ` - ${dignitary.extension}` : ''}</div>
                   )}
                 </div>
-                {s.description && <p className="session-card-desc">{s.description}</p>}
-                <div className="card-badge-row">
-                  <span className="card-badge card-badge--muted">View Seating →</span>
-                </div>
+                <button className="btn btn-gold btn-sm" disabled={adding} onClick={() => onAdd(dignitary.id)}>Add</button>
               </div>
             ))}
           </div>
         )}
       </div>
+    </>
+  );
+}
 
-      {showNew && (
-        <Modal onClose={() => setShowNew(false)}>
-          <SessionForm isEdit={false} onSave={async (f) => {
-            try {
-              await createSession.mutateAsync(f);
-              setShowNew(false);
-            } catch (err) {
-              const detail = err?.response?.data?.detail;
-              const msg = typeof detail === 'string' ? detail
-                : Array.isArray(detail) ? detail.map(d => d.msg || JSON.stringify(d)).join(', ')
-                : typeof err?.message === 'string' ? err.message
-                : 'Failed to create session';
-              throw new Error(msg);
-            }
-          }} onCancel={() => setShowNew(false)} />
+function triggerFileDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function formatTimeLabel(value) {
+  if (!value || typeof value !== 'string') return '';
+  const parts = value.split(':');
+  return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : value;
+}
+
+export function Conference() {
+  const { confId } = useParams();
+  const navigate = useNavigate();
+  const { isEditorOrAdmin, isAdmin } = useAuth();
+  const [showNewSession, setShowNewSession] = useState(false);
+  const [showDignitaryPicker, setShowDignitaryPicker] = useState(false);
+  const [tab, setTab] = useState('sessions');
+  const [exporting, setExporting] = useState(false);
+
+  const { data: conf, isLoading: isLoadingConf } = useConference(confId);
+  const { sessionsQuery, createSession, deleteSession } = useSessions(confId);
+  const { conferenceDignitariesQuery, addConferenceDignitary, removeConferenceDignitary } = useConferenceDignitaries(confId);
+  const { exportArrivals } = useConferenceProtocolAssignments(confId, isAdmin && tab === 'export');
+  const { directoryQuery } = useDirectoryDignitaries(showDignitaryPicker);
+
+  const { data: sessions = [], isLoading: isLoadingSessions } = sessionsQuery;
+  const { data: conferenceDignitaries = [], isLoading: isLoadingRoster } = conferenceDignitariesQuery;
+  const { data: directoryDignitaries = [], isLoading: isLoadingDirectory } = directoryQuery;
+
+  const pickedIds = useMemo(
+    () => new Set(conferenceDignitaries.map((dignitary) => dignitary.directory_dignitary_id)),
+    [conferenceDignitaries],
+  );
+  const availableDirectoryDignitaries = useMemo(
+    () => directoryDignitaries.filter((dignitary) => !pickedIds.has(dignitary.id)),
+    [directoryDignitaries, pickedIds],
+  );
+
+  const handleExportArrivals = async () => {
+    setExporting(true);
+    try {
+      const blob = await exportArrivals();
+      triggerFileDownload(blob, `${conf.name.toLowerCase().replace(/\s+/g, '-')}-arrivals.doc`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const arrivedConferenceDignitaries = useMemo(
+    () => conferenceDignitaries.filter((dignitary) => dignitary.first_arrival_at),
+    [conferenceDignitaries],
+  );
+
+  if (isLoadingConf || isLoadingSessions || isLoadingRoster) {
+    return <Loader text="Loading conference..." />;
+  }
+  if (!conf) return <div className="empty-state" style={{ marginTop: 100 }}>Conference not found.</div>;
+
+  return (
+    <div>
+      <Header confName={conf.name} backTo="/" backLabel="Dashboard" />
+
+      <div className="page-container fade-in">
+        <div className="page-header page-header--start">
+          <div>
+            <h1 className="page-title">{conf.name}</h1>
+            <p className="page-subtitle">
+              {formatDisplayDate(conf.date, 'Date not set')}
+              {conf.time ? ` at ${formatTimeLabel(conf.time)}` : ''}
+              {conf.venue ? ` - ${conf.venue}` : ''}
+            </p>
+            <div className="page-chip-row">
+              {conf.auditorium?.name && <span className="page-chip">Auditorium: {conf.auditorium.name}</span>}
+              <span className="page-chip">{conferenceDignitaries.length} dignitaries</span>
+              <span className="page-chip">{sessions.length} sessions</span>
+            </div>
+            {conf.description && <p className="page-description">{conf.description}</p>}
+          </div>
+        </div>
+
+        <div className="tab-bar">
+          {[
+            { id: 'sessions', label: 'Sessions' },
+            { id: 'dignitaries', label: 'Dignitaries' },
+            { id: 'export', label: 'Arrivals' },
+          ].map((tabOption) => (
+            <button key={tabOption.id} onClick={() => setTab(tabOption.id)} className={`tab-btn ${tab === tabOption.id ? 'active' : ''}`}>
+              {tabOption.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'sessions' && (
+          <section className="card section-card conference-tab-panel">
+            <div className="section-card-head">
+              <div>
+                <h2 className="section-card-title">Sessions</h2>
+                <p className="section-card-subtitle">Open a session to manage arrival status, assign seats, and configure the map.</p>
+              </div>
+              {isEditorOrAdmin && (
+                <div className="section-card-actions">
+                  <button className="btn btn-gold btn-sm" onClick={() => setShowNewSession(true)}>Add Session</button>
+                </div>
+              )}
+            </div>
+
+            {sessions.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">Session</div>
+                <p className="empty-state-text">No sessions yet</p>
+                {isEditorOrAdmin && <p className="empty-state-sub">Add a session to begin seating and arrival management.</p>}
+              </div>
+            ) : (
+              <div className="grid-cards">
+                {sessions.map((session) => (
+                  <div key={session.id} className="card card-hover session-card" onClick={() => navigate(`/session/${session.id}`)}>
+                    <div className="card-top-row">
+                      <div>
+                        <h3 className="session-card-title">{session.name}</h3>
+                        <p className="session-card-meta">
+                          {formatDisplayDate(session.date, 'Date not set')}
+                          {session.time ? ` at ${formatTimeLabel(session.time)}` : ''}
+                        </p>
+                      </div>
+                      {isEditorOrAdmin && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: 'var(--danger-strong)', flexShrink: 0 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Delete session?')) deleteSession.mutate(session.id);
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    {session.description && <p className="session-card-desc">{session.description}</p>}
+                    <div className="card-badge-row">
+                      <span className="card-badge">Open Session</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === 'dignitaries' && (
+          <section className="card section-card conference-tab-panel">
+            <div className="section-card-head">
+              <div>
+                <h2 className="section-card-title">Dignitaries</h2>
+                <p className="section-card-subtitle">Everyone added here is available across all sessions in this conference.</p>
+              </div>
+              <div className="section-card-actions">
+                {isAdmin && <button className="btn btn-outline btn-sm" onClick={() => navigate('/dignitaries')}>Open Directory</button>}
+                {isEditorOrAdmin && (
+                  <button
+                    className="btn btn-gold btn-sm btn-icon"
+                    aria-label="Add dignitary from directory"
+                    title="Add dignitary from directory"
+                    onClick={() => setShowDignitaryPicker(true)}
+                  >
+                    <Plus size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {conferenceDignitaries.length === 0 ? (
+              <div className="empty-state" style={{ minHeight: 180 }}>
+                <div className="empty-state-icon">Roster</div>
+                <p className="empty-state-text">No dignitaries added to this conference yet</p>
+                <p className="empty-state-sub">Add people from the dignitary directory and they will be available for every session in this conference.</p>
+              </div>
+            ) : (
+              <div className="grid-cards">
+                {conferenceDignitaries.map((dignitary) => (
+                  <div key={dignitary.id} className="card attendee-card">
+                    <div className="attendee-card-top">
+                      <div className="attendee-avatar">
+                        {dignitary.picture_url
+                          ? <img src={dignitary.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : dignitary.name?.[0]?.toUpperCase()}
+                      </div>
+                      <div className="attendee-info">
+                        <div className="attendee-name">{dignitary.name}</div>
+                        <div className="attendee-title">{dignitary.title}</div>
+                        {(dignitary.church || dignitary.extension) && <div className="attendee-church">{dignitary.church || 'No church listed'}{dignitary.extension ? ` - ${dignitary.extension}` : ''}</div>}
+                      </div>
+                    </div>
+                    <div className="attendee-badges">
+                      {dignitary.assigned_protocol_name && <span className="card-badge">Protocol: {dignitary.assigned_protocol_name}</span>}
+                      {dignitary.conference_role && <span className="card-badge card-badge--muted">{dignitary.conference_role}</span>}
+                      {dignitary.first_arrival_session?.name && <span className="card-badge card-badge--muted">First arrived: {dignitary.first_arrival_session.name}</span>}
+                    </div>
+                    {isEditorOrAdmin && (
+                      <div className="conference-dignitary-actions">
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: 'var(--danger-strong)' }}
+                          onClick={() => {
+                            if (window.confirm(`Remove ${dignitary.name} from this conference?`)) {
+                              removeConferenceDignitary.mutate(dignitary.id);
+                            }
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === 'export' && (
+          <section className="card section-card conference-tab-panel">
+            <div className="section-card-head">
+              <div>
+                <h2 className="section-card-title">Arrivals</h2>
+                <p className="section-card-subtitle">Track the first session where each conference dignitary arrived and download a readable report.</p>
+              </div>
+              {isAdmin && (
+                <div className="section-card-actions">
+                  <button className="btn btn-outline btn-sm" onClick={handleExportArrivals} disabled={exporting}>
+                    {exporting ? 'Preparing...' : 'Download Arrivals Document'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="card profile-summary-card">
+              <div className="profile-summary-title">Conference-wide arrivals</div>
+              <div className="profile-summary-subtitle">
+                {arrivedConferenceDignitaries.length} of {conferenceDignitaries.length} dignitar{conferenceDignitaries.length === 1 ? 'y has' : 'ies have'} recorded first arrivals
+              </div>
+              {!isAdmin && (
+                <p className="profile-help-text">Only admins can download the arrivals document.</p>
+              )}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {showNewSession && (
+        <Modal onClose={() => setShowNewSession(false)}>
+          <SessionForm
+            isEdit={false}
+            onSave={async (payload) => {
+              await createSession.mutateAsync(payload);
+              setShowNewSession(false);
+            }}
+            onCancel={() => setShowNewSession(false)}
+          />
+        </Modal>
+      )}
+
+      {showDignitaryPicker && (
+        <Modal onClose={() => setShowDignitaryPicker(false)}>
+          <AddConferenceDignitaryModal
+            available={availableDirectoryDignitaries}
+            adding={addConferenceDignitary.isPending}
+            loading={isLoadingDirectory}
+            onAdd={async (directoryDignitaryId) => {
+              await addConferenceDignitary.mutateAsync(directoryDignitaryId);
+            }}
+            onClose={() => setShowDignitaryPicker(false)}
+            onOpenDirectory={isAdmin ? () => navigate('/dignitaries') : undefined}
+          />
         </Modal>
       )}
     </div>

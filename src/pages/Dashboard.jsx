@@ -3,11 +3,36 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/auth-context';
 import { Loader, Modal, ModalHeader, FormField } from '../components/UI';
 import { Header } from '../components/Header';
-import { format } from 'date-fns';
 import { useConferences } from '../hooks/useConferences';
+import { useAuditoriums } from '../hooks/useAuditoriums';
+import { formatDisplayDate } from '../lib/formatters';
 
-function ConfForm({ isEdit, onSave, onCancel }) {
-  const [f, setF] = useState({ name:'', date:'', venue:'', description:'' });
+function toDateInputValue(value) {
+  if (!value || typeof value !== 'string') return '';
+  return value.slice(0, 10);
+}
+
+function toTimeInputValue(value) {
+  if (!value || typeof value !== 'string') return '';
+  return value.slice(0, 5);
+}
+
+function formatTimeLabel(value) {
+  if (!value || typeof value !== 'string') return '';
+  return value.slice(0, 5);
+}
+
+function handleTimeSelection(input, onSelect) {
+  const nextValue = input.value;
+  onSelect(nextValue);
+  if (!nextValue) return;
+  window.requestAnimationFrame(() => {
+    input.blur();
+  });
+}
+
+function ConfForm({ auditoriums = [], isEdit, loadingAuditoriums = false, onSave, onCancel }) {
+  const [f, setF] = useState({ name:'', date:'', time:'', venue:'', description:'', auditorium_id:'' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const s = (k, v) => setF(x => ({ ...x, [k]:v }));
@@ -17,9 +42,8 @@ function ConfForm({ isEdit, onSave, onCancel }) {
     setSaving(true);
     setError('');
     try {
-      // Convert empty strings to null so Pydantic doesn't reject them
       const cleaned = Object.fromEntries(
-        Object.entries(f).map(([k, v]) => [k, v === '' ? null : v])
+        Object.entries(f).filter(([, value]) => value !== '')
       );
       await onSave(cleaned);
     } catch (err) {
@@ -39,83 +63,109 @@ function ConfForm({ isEdit, onSave, onCancel }) {
       {error && <p style={{ color: '#ef4444', marginBottom: 12, fontSize: 13, padding: 8, background: '#ef444422', borderRadius: 6 }}>{error}</p>}
       <FormField label="Conference Name *"><input className="input" placeholder="General Council 2025" value={f.name} onChange={e=>s('name',e.target.value)}/></FormField>
       <div className="form-grid-2">
-        <FormField label="Date"><input className="input" type="date" value={f.date} onChange={e=>s('date',e.target.value)}/></FormField>
-        <FormField label="Venue"><input className="input" placeholder="National Auditorium, Accra" value={f.venue} onChange={e=>s('venue',e.target.value)}/></FormField>
+        <FormField label="Date"><input className="input" type="date" value={toDateInputValue(f.date)} onChange={e=>s('date',e.target.value)}/></FormField>
+        <FormField label="Time"><input className="input" type="time" step="60" value={toTimeInputValue(f.time)} onChange={(e) => handleTimeSelection(e.currentTarget, (value) => s('time', value))}/></FormField>
       </div>
+      <FormField label="Venue"><input className="input" placeholder="National Auditorium, Accra" value={f.venue} onChange={e=>s('venue',e.target.value)}/></FormField>
+      <FormField label="Auditorium *">
+        <select className="input" value={f.auditorium_id} onChange={e=>s('auditorium_id', e.target.value)} disabled={loadingAuditoriums}>
+          <option value="">{loadingAuditoriums ? 'Loading auditoriums...' : 'Select auditorium'}</option>
+          {auditoriums.map((auditorium) => (
+            <option key={auditorium.id} value={auditorium.id}>{auditorium.name}</option>
+          ))}
+        </select>
+      </FormField>
       <FormField label="Description"><textarea className="input" rows={3} placeholder="Brief overview…" value={f.description} onChange={e=>s('description',e.target.value)} style={{ resize:'vertical' }}/></FormField>
       <div className="form-actions">
         <button className="btn btn-outline" onClick={onCancel} disabled={saving}>Cancel</button>
-        <button className="btn btn-gold" onClick={handleSave} disabled={!f.name || saving}>{saving ? 'Creating...' : (isEdit ? 'Save Changes' : 'Create Conference')}</button>
+        <button className="btn btn-gold" onClick={handleSave} disabled={!f.name || !f.auditorium_id || saving || loadingAuditoriums}>{saving ? 'Creating...' : (isEdit ? 'Save Changes' : 'Create Conference')}</button>
       </div>
     </div>
   </>;
 }
 
 export function Dashboard() {
-  const { isEditorOrAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [showNew, setShowNew] = useState(false);
 
   const { conferencesQuery, createConference, deleteConference } = useConferences();
+  const auditoriumsQuery = useAuditoriums(showNew);
   const { data: confs, isLoading } = conferencesQuery;
+  const { data: auditoriums = [], isLoading: loadingAuditoriums } = auditoriumsQuery;
 
   if (isLoading) return <Loader text="Loading Conferences..." />;
 
   const confList = confs || [];
-
   return (
     <div>
       <Header />
       <div className="page-container fade-in">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Conferences</h1>
-            <p className="page-subtitle">{confList.length} conference{confList.length!==1?'s':''} on record</p>
-          </div>
-          {isEditorOrAdmin && <button className="btn btn-gold" onClick={() => setShowNew(true)}>+ New Conference</button>}
-        </div>
-
-        {confList.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📋</div>
-            <p className="empty-state-text">No conferences yet</p>
-            {isEditorOrAdmin && <p className="empty-state-sub">Create your first conference to get started</p>}
-          </div>
-        ) : (
-          <div className="grid-cards grid-cards--wide">
-            {confList.map((c, i) => (
-              <div key={c.id} className="card card-hover card-content"
-                style={{ animationDelay:`${i*.05}s` }}
-                onClick={() => navigate(`/conference/${c.id}`)}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <h3 className="card-title">{c.name}</h3>
-                    <p className="card-meta">
-                      {c.date ? format(new Date(c.date), 'dd MMM yyyy') : '—'} 
-                      {c.venue ? ` • ${c.venue}` : ''}
-                    </p>
-                  </div>
-                  {isEditorOrAdmin && (
-                    <button className="btn btn-ghost btn-sm" style={{ color:'#ef4444', flexShrink:0 }}
-                      onClick={e => { e.stopPropagation(); if (window.confirm('Delete this conference and all its sessions?')) deleteConference.mutate(c.id); }}>🗑</button>
-                  )}
+        <div className="dashboard-shell">
+          <section className="dashboard-hero">
+            <div className="card dashboard-hero-main">
+              <div className="dashboard-hero-top">
+                <div className="dashboard-hero-copy">
+                  <h1 className="dashboard-hero-title">Conferences</h1>
+                  <p className="dashboard-hero-subtitle">{confList.length} conference{confList.length!==1?'s':''} on record</p>
                 </div>
-                {c.description && <p className="card-desc">{c.description}</p>}
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:8 }}>
-                  <span style={{ background:'#c9a84c0e', border:'1px solid #c9a84c22', color:'#c9a84c',
-                    borderRadius:6, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
-                    Manage Sessions →
-                  </span>
-                </div>
+                {isAdmin && (
+                  <button className="btn btn-gold dashboard-hero-action" onClick={() => setShowNew(true)}>
+                    + NEW CONFERENCE
+                  </button>
+                )}
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          </section>
+
+          <section className="dashboard-list-block">
+            {confList.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">📋</div>
+                <p className="empty-state-text">No conferences yet</p>
+                {isAdmin && <p className="empty-state-sub">Create your first conference to get started</p>}
+              </div>
+            ) : (
+              <div className="grid-cards grid-cards--wide">
+                {confList.map((c, i) => (
+                  <div key={c.id} className="card card-hover card-content dashboard-conference-card"
+                    style={{ animationDelay:`${i*.05}s` }}
+                    onClick={() => navigate(`/conference/${c.id}`)}>
+                    <div className="dashboard-card-head">
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div className="dashboard-card-kicker">Conference</div>
+                        <h3 className="card-title dashboard-card-title">{c.name}</h3>
+                        <p className="card-meta dashboard-card-meta">
+                          {formatDisplayDate(c.date, '—')}
+                          {c.time ? ` at ${formatTimeLabel(c.time)}` : ''}
+                          {c.venue ? ` • ${c.venue}` : ''}
+                        </p>
+                      </div>
+                      {isAdmin && (
+                        <button className="btn btn-ghost btn-sm dashboard-delete-btn"
+                          onClick={e => { e.stopPropagation(); if (window.confirm('Delete this conference and all its sessions?')) deleteConference.mutate(c.id); }}>🗑</button>
+                      )}
+                    </div>
+                    {c.description && <p className="card-desc dashboard-card-desc">{c.description}</p>}
+                    <div className="dashboard-card-tags">
+                      {c.auditorium?.name && (
+                        <span className="dashboard-card-tag">{c.auditorium.name}</span>
+                      )}
+                      <span className="dashboard-card-link">
+                        Manage Sessions →
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
 
       {showNew && (
         <Modal onClose={() => setShowNew(false)}>
-          <ConfForm isEdit={false} onSave={async (f) => {
+          <ConfForm auditoriums={auditoriums} loadingAuditoriums={loadingAuditoriums} isEdit={false} onSave={async (f) => {
             try {
               await createConference.mutateAsync(f);
               setShowNew(false);

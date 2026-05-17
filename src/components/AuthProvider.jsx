@@ -10,17 +10,17 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user || null);
-      if (session?.user) fetchProfile();
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user || null);
+      if (currentSession?.user) fetchProfile();
       else setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user || null);
-      if (session?.user) fetchProfile();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession);
+      setUser(currentSession?.user || null);
+      if (currentSession?.user) fetchProfile();
       else {
         setProfile(null);
         setLoading(false);
@@ -30,17 +30,32 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch profile via FastAPI — NOT directly from Supabase (per AGENT_CONTEXT.md §7.4)
-  const fetchProfile = async () => {
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const channel = supabase.channel(`profile-sync:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => {
+        fetchProfile();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conference_protocol_assignments', filter: `user_id=eq.${user.id}` }, () => {
+        fetchProfile();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  const fetchProfile = async (attempt = 0) => {
     try {
       const { data } = await api.get('/users/me');
-      if (data) {
-        setProfile(data);
-      } else {
-        setProfile(null);
-      }
+      setProfile(data || null);
     } catch (err) {
-      // If 401 the interceptor will sign out, if 404 profile doesn't exist yet
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+        return fetchProfile(attempt + 1);
+      }
       setProfile(null);
     }
     setLoading(false);
@@ -52,14 +67,20 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const managedConferenceDignitaryIds = profile?.managed_conference_dignitary_ids || [];
+
   const val = {
     session,
     user,
     profile,
     loading,
     reloadProfile,
-    role: profile?.role || 'protocol',
-    isEditorOrAdmin: profile?.role === 'admin' || profile?.role === 'editor'
+    role: profile?.role || null,
+    managedConferenceDignitaryIds,
+    canManageConferenceDignitary: (conferenceDignitaryId) =>
+      profile?.role === 'admin' || managedConferenceDignitaryIds.includes(conferenceDignitaryId),
+    isEditorOrAdmin: profile?.role === 'admin' || profile?.role === 'editor',
+    isAdmin: profile?.role === 'admin',
   };
 
   return <AuthContext.Provider value={val}>{children}</AuthContext.Provider>;

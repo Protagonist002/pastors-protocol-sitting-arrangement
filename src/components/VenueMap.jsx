@@ -1,115 +1,157 @@
-import { SECTIONS, DEFAULT_CONFIG } from '../lib/constants';
+import { memo, useMemo } from 'react';
 
-export function VenueMap({ cfg, attendees, activeSec, onSec }) {
-  // cfg is now a JSONB object like { choir: { rows: 5, cols: 4 }, ... }
-  const cfgMap = cfg || {};
+import {
+  auditoriumSupportsSections,
+  getAuditoriumHotspots,
+  getAuditoriumImageUrl,
+  getAuditoriumSections,
+  getDefaultConfig,
+  getSectionById,
+} from '../lib/constants';
 
-  const getCount = id => attendees.filter(d => d.section === id).length;
-  
-  const getTotal = id => {
-    const c = cfgMap[id] || DEFAULT_CONFIG[id];
-    return (c?.rows || 0) * (c?.cols || 0);
+export const VenueMap = memo(function VenueMap({ auditorium, cfg, attendees, activeSec, onSec }) {
+  const sections = getAuditoriumSections(auditorium);
+  const defaultConfig = getDefaultConfig(auditorium);
+  const imageUrl = getAuditoriumImageUrl(auditorium);
+  const hotspots = getAuditoriumHotspots(auditorium);
+  const cfgMap = useMemo(() => ({ ...defaultConfig, ...(cfg || {}) }), [cfg, defaultConfig]);
+  const sectionCounts = useMemo(() => {
+    const counts = {};
+    attendees.forEach((dignitary) => {
+      if (!dignitary.section) return;
+      counts[dignitary.section] = (counts[dignitary.section] || 0) + 1;
+    });
+    return counts;
+  }, [attendees]);
+
+  const getCount = (id) => sectionCounts[id] || 0;
+
+  const getTotal = (id) => {
+    const sectionConfig = cfgMap[id] || defaultConfig[id];
+    return (sectionConfig?.rows || 0) * (sectionConfig?.cols || 0);
   };
 
-  const Block = ({ id, label, style: ex, hideStats }) => {
-    const sec   = SECTIONS.find(s => s.id === id);
-    const cnt   = getCount(id); 
-    const tot   = getTotal(id);
-    const isAct = activeSec === id;
-    const isClosed = sec?.closed;
-    
-    return (
-      <div className={`section-block${isAct ? ' active-sec' : ''}${isClosed ? ' closed-sec' : ''}`}
-        style={{ background:sec?.color, color: isClosed ? '#000' : '#fff', flexDirection:'column', cursor: isClosed ? 'not-allowed' : 'pointer', border: isAct ? '3px solid #c9a84c' : '1px solid rgba(0,0,0,0.15)', ...ex }}
-        onClick={() => !isClosed && onSec(id)}
-        title={isClosed ? `${label || sec?.label} (Closed)` : `${label || sec?.label} — ${cnt} of ${tot} assigned`}>
-        <div style={{ fontWeight: 800, fontSize: 11, lineHeight: 1.3, textTransform: 'uppercase', whiteSpace: 'pre-line' }}>{label || sec?.label}</div>
-        {!hideStats && (
-          <div style={{ fontSize: 10, opacity: 0.8, marginTop: 4, fontWeight: 700 }}>
-            {isClosed ? 'CLOSED' : `${cnt}/${tot}`}
-          </div>
-        )}
-        {isAct && (
-          <div style={{ position:'absolute', bottom:-5, left:'50%', transform:'translateX(-50%)',
-            width:10, height:10, background:'#c9a84c', borderRadius:'50%', boxShadow:'0 0 6px #c9a84c' }}/>
-        )}
-      </div>
-    );
+  const withAlpha = (hex, alpha) => {
+    if (!hex || !hex.startsWith('#')) {
+      return `rgba(201, 168, 76, ${alpha})`;
+    }
+    const normalized = hex.replace('#', '');
+    const value = normalized.length === 3
+      ? normalized.split('').map((char) => char + char).join('')
+      : normalized;
+    const intValue = Number.parseInt(value, 16);
+    const red = (intValue >> 16) & 255;
+    const green = (intValue >> 8) & 255;
+    const blue = intValue & 255;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
   };
 
-  const Arrow = ({ dir, label, style }) => {
-    const isUp = dir === 'up';
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', color: '#e2f0e6', ...style }}>
-        {label && !isUp && <span style={{ marginBottom: 4 }}>{label}</span>}
-        <span style={{ fontSize: 16, lineHeight: 1 }}>{isUp ? '↑' : '↓'}</span>
-        {label && isUp && <span style={{ marginTop: 4 }}>{label}</span>}
-      </div>
-    );
-  };
-
-  return (
+  const renderImageMap = () => (
     <div className="venue-map">
-      <div className="venue-scroll-hint">← Swipe to explore the venue map →</div>
-      <div className="venue-map-inner">
-        
-        {/* TOP ROW */}
-        <div className="venue-top-row">
-          <Block id="choir" label="CHOIR" style={{ width: 130, height: 110, borderRadius: 2 }} />
-          
-          <div className="venue-altar-wrapper">
-            <Block id="altar" label="ALTAR" style={{ height: 110, borderRadius: 2 }} />
-            <div className="venue-altar-arrows">
-              <span>←--------------</span>
-              <span>--------------→</span>
-            </div>
-          </div>
-          
-          <div className="venue-vvip-wrapper">
-            <Block id="vvip" label={"SETMAN\n-\nVVIP / CEC\nSECTION"} style={{ width: 160, height: 110, borderRadius: 16 }} />
-            <div className="venue-vvip-closed">
-              <span>C</span><span>L</span><span>O</span><span>S</span><span>E</span><span>D</span>
-            </div>
-          </div>
+      <div className="venue-map-frame">
+        <div className="venue-map-stage">
+          <img src={imageUrl} alt={auditorium?.name || 'Auditorium map'} className="venue-map-image" />
+          {hotspots.map((hotspot, index) => {
+            const section = getSectionById(auditorium, hotspot.id);
+            if (!section) return null;
+            if (hotspot.interactive === false) return null;
+
+            const count = getCount(hotspot.id);
+            const total = getTotal(hotspot.id);
+            const isActive = activeSec === hotspot.id;
+            const isClosed = hotspot.closed || section.closed;
+            const showLabel = hotspot.showLabel !== false;
+            const showMeta = hotspot.showMeta !== false && !isClosed && total > 0;
+            const showClosed = hotspot.showClosed !== false && isClosed;
+            const borderAlpha = isActive ? 0.96 : hotspot.borderAlpha ?? 0.78;
+            const backgroundAlpha = isClosed
+              ? 0.08
+              : isActive
+                ? hotspot.activeBackgroundAlpha ?? 0.28
+                : hotspot.backgroundAlpha ?? 0.18;
+
+            return (
+              <button
+                key={`${hotspot.id}-${index}`}
+                type="button"
+                className={`venue-map-hotspot${isActive ? ' active' : ''}${isClosed ? ' closed' : ''}`}
+                style={{
+                  left: `${hotspot.left}%`,
+                  top: `${hotspot.top}%`,
+                  width: `${hotspot.width}%`,
+                  height: `${hotspot.height}%`,
+                  borderRadius: hotspot.radius ? `${hotspot.radius}px` : undefined,
+                  borderColor: isActive ? '#d6bb75' : withAlpha(section.color, borderAlpha),
+                  background: isClosed ? 'rgba(255, 255, 255, 0.08)' : withAlpha(section.color, backgroundAlpha),
+                  boxShadow: isActive && hotspot.activeShadow ? hotspot.activeShadow : undefined,
+                }}
+                onClick={() => {
+                  if (!isClosed) {
+                    onSec(activeSec === hotspot.id ? null : hotspot.id);
+                  }
+                }}
+                aria-label={isClosed ? `${section.label} closed` : `${section.label} ${count} of ${total} assigned`}
+                title={isClosed ? `${section.label} (Closed)` : `${section.label} - ${count} of ${total} assigned`}
+              >
+                {showLabel && <span className="venue-map-hotspot-label">{section.label}</span>}
+                {showMeta && <span className="venue-map-hotspot-meta">{count}/{total}</span>}
+                {showClosed && <span className="venue-map-hotspot-closed">Closed</span>}
+              </button>
+            );
+          })}
         </div>
-
-        {/* MIDDLE ROW */}
-        <div className="venue-mid-row">
-          
-          <Arrow dir="down" label="PP" style={{ width: 40, marginRight: 20 }} />
-          
-          <Block id="left" label="LEFT SECTION" style={{ width: 105, height: 110, borderRadius: 16 }} />
-          
-          <Arrow dir="up" label="CP" style={{ width: 40 }} />
-          
-          <Block id="middle" label="MIDDLE SECTION" style={{ width: 105, height: 110, borderRadius: 16 }} />
-          
-          <Arrow dir="down" label="PP" style={{ width: 40 }} />
-          
-          <Block id="right" label="RIGHT SECTION" style={{ width: 105, height: 110, borderRadius: 16 }} />
-          
-          <Arrow dir="up" label="CP" style={{ width: 40 }} />
-          
-          <Block id="minister" label={"MINISTER\nSECTION"} style={{ flex: 1, minWidth: 140, height: 140, borderRadius: 2 }} />
-        </div>
-
-        {/* BOTTOM ROW */}
-        <div className="venue-bot-row">
-          <div className="venue-entrance">ENTRANCE</div>
-          
-          <div className="venue-media-bar">MEDIA</div>
-          
-          <div className="venue-entrance-arrow">
-            <span style={{ fontSize: 20, lineHeight: 1 }}>↑</span>
-            <span style={{ fontSize: 10, fontWeight: 'bold', marginTop: 4 }}>ENTRANCE</span>
-          </div>
-
-          <div className="venue-admin-bar">ADMIN STAND FOR PUBLICATIONS</div>
-          
-          <div className="venue-entrance">ENTRANCE</div>
-        </div>
-
       </div>
     </div>
   );
-}
+
+  if (!auditoriumSupportsSections(auditorium)) {
+    return (
+      <div className="card" style={{ padding: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+          <div>
+            <h3 style={{ color: '#e2f0e6', marginBottom: 4 }}>{auditorium?.name || 'Auditorium Preview'}</h3>
+            <p style={{ color: '#8cb398', fontSize: 13 }}>Sections for this auditorium will be configured later. You can still add conference dignitaries and session attendees now.</p>
+          </div>
+        </div>
+        {imageUrl ? (
+          <div className="venue-map-static-frame">
+            <img src={imageUrl} alt={auditorium?.name || 'Auditorium map'} className="venue-map-static-image" />
+          </div>
+        ) : (
+          <div className="empty-state" style={{ minHeight: 220 }}>
+            <div className="empty-state-icon">Map</div>
+            <p className="empty-state-text">No auditorium preview available yet</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (imageUrl) {
+    return renderImageMap();
+  }
+
+  return (
+    <div className="card" style={{ padding: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        {sections.map((section) => (
+          <div
+            key={section.id}
+            className={`section-block${activeSec === section.id ? ' active-sec' : ''}`}
+            style={{
+              minHeight: 110,
+              background: section.color,
+              color: section.closed ? '#000' : '#fff',
+              border: activeSec === section.id ? '3px solid #c9a84c' : '1px solid rgba(0,0,0,0.15)',
+              cursor: section.closed ? 'not-allowed' : 'pointer',
+            }}
+            onClick={() => !section.closed && onSec(activeSec === section.id ? null : section.id)}
+          >
+            <div style={{ fontWeight: 800, textTransform: 'uppercase' }}>{section.label}</div>
+            <div style={{ fontSize: 11, marginTop: 8 }}>{section.closed ? 'Closed' : `${getCount(section.id)} / ${getTotal(section.id)} assigned`}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});

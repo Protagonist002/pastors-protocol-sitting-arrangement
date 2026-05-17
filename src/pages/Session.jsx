@@ -1,246 +1,325 @@
-import { useState, useRef } from 'react';
+import { memo, useDeferredValue, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../components/auth-context';
-import { Loader, Modal, ModalHeader, FormField } from '../components/UI';
-import { Header } from '../components/Header';
-import { VenueMap } from '../components/VenueMap';
-import { SeatGrid } from '../components/SeatGrid';
-import { AttendeeProfile } from '../components/AttendeeProfile';
-import { SECTIONS, OPEN_SECTIONS, STATUSES, statusColor, DEFAULT_CONFIG } from '../lib/constants';
-import { format } from 'date-fns';
-import { useSessionData } from '../hooks/useSessions';
-import { useDignitaries } from '../hooks/useAttendees';
-import { useConferences } from '../hooks/useConferences';
-import { useSessions } from '../hooks/useSessions';
-import { api } from '../services/apiClient';
-import { supabase } from '../lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../components/auth-context';
+import { AttendeeProfile } from '../components/AttendeeProfile';
+import { Header } from '../components/Header';
+import { SeatGrid } from '../components/SeatGrid';
+import { Loader, Modal, ModalHeader, FormField } from '../components/UI';
+import { VenueMap } from '../components/VenueMap';
+import { useDignitaries } from '../hooks/useAttendees';
+import { useConferenceDignitaries } from '../hooks/useDignitaryDirectory';
+import { useConferences } from '../hooks/useConferences';
+import { useSessions, useSessionData } from '../hooks/useSessions';
+import { formatDisplayDate } from '../lib/formatters';
+import { auditoriumSupportsSections, getDefaultConfig, getOpenSections, getSectionById, STATUSES, statusColor } from '../lib/constants';
 
-function DignitaryForm({ init = {}, isEdit, sessionId, onSave, onCancel }) {
-  const [f, setF] = useState({ name:'', title:'', church:'', extension:'', section:'', row_num:'', col_num:'', status:'pending', notes:'', ...init });
+function formatTimeLabel(value) {
+  if (!value || typeof value !== 'string') return '';
+  const parts = value.split(':');
+  return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : value;
+}
+
+function normalizeSectionCount(value, fallback = null) {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.max(1, Math.min(20, parsed));
+}
+import { api } from '../services/apiClient';
+
+function AddDignitaryToSessionForm({ auditorium, conferenceDignitaries, initialAssignment, loadingConferenceDignitaries = false, onSave, onCancel }) {
+  const [f, setF] = useState({
+    conference_dignitary_id: '',
+    section: initialAssignment?.section || '',
+    row_num: initialAssignment?.row_num || '',
+    col_num: initialAssignment?.col_num || '',
+    notes: '',
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(init.picture_url || null);
-  const fileRef = useRef(null);
-  const s = (k, v) => setF(x => ({ ...x, [k]:v }));
+  const openSections = getOpenSections(auditorium);
+  const selected = conferenceDignitaries.find((dignitary) => dignitary.id === f.conference_dignitary_id);
 
-  const handlePhotoSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Validate file type and size
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file (JPG, PNG, etc.)');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be smaller than 5MB');
-      return;
-    }
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
-    setError('');
-  };
-
-  const removePhoto = () => {
-    setPhotoFile(null);
-    setPhotoPreview(null);
-    if (fileRef.current) fileRef.current.value = '';
-  };
-
-  const uploadPhoto = async () => {
-    if (!photoFile) return f.picture_url || null;
-    const ext = photoFile.name.split('.').pop() || 'jpg';
-    const path = `${sessionId}/${crypto.randomUUID()}.${ext}`;
-    const { error: uploadErr } = await supabase.storage
-      .from('dignitary-photos')
-      .upload(path, photoFile, { cacheControl: '3600', upsert: false });
-    if (uploadErr) throw new Error(`Photo upload failed: ${uploadErr.message}`);
-    const { data: { publicUrl } } = supabase.storage
-      .from('dignitary-photos')
-      .getPublicUrl(path);
-    return publicUrl;
-  };
+  const setField = (key, value) => setF((current) => ({ ...current, [key]: value }));
 
   const handleSave = async () => {
-    if (!f.name || !f.title) return;
+    if (!f.conference_dignitary_id) return;
     setSaving(true);
     setError('');
     try {
-      // Upload photo first if a new file was selected
-      const pictureUrl = await uploadPhoto();
-      const cleaned = Object.fromEntries(
-        Object.entries(f).map(([k, v]) => [k, v === '' ? null : v])
-      );
-      // If photo was removed (preview is null and no file), send null
-      if (!photoPreview && !photoFile) cleaned.picture_url = null;
-      else if (pictureUrl) cleaned.picture_url = pictureUrl;
-      await onSave({ ...cleaned, session_id: sessionId });
+      const cleaned = Object.fromEntries(Object.entries(f).map(([key, value]) => [key, value === '' ? null : value]));
+      await onSave(cleaned);
     } catch (err) {
       const detail = err?.response?.data?.detail;
-      const msg = typeof detail === 'string' ? detail
-        : Array.isArray(detail) ? detail.map(d => d.msg || JSON.stringify(d)).join(', ')
-        : err?.message || (isEdit ? 'Failed to update dignitary' : 'Failed to register dignitary');
+      const msg = typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((item) => item.msg || JSON.stringify(item)).join(', ')
+          : err?.message || 'Failed to add dignitary';
       setError(msg);
     } finally {
       setSaving(false);
     }
   };
 
-  return <>
-    <ModalHeader title={isEdit ? 'Edit Dignitary' : 'Register Dignitary'} onClose={onCancel}/>
-    <div className="modal-body">
-      {error && <p style={{ color: '#ef4444', marginBottom: 12, fontSize: 13, padding: 8, background: '#ef444422', borderRadius: 6 }}>{error}</p>}
-      
-      {/* Photo Upload */}
-      <div style={{ display:'flex', gap:16, marginBottom:16, alignItems:'flex-start' }}>
-        <div style={{ flexShrink:0 }}>
-          <div
-            onClick={() => fileRef.current?.click()}
-            style={{
-              width:80, height:80, borderRadius:12, cursor:'pointer',
-              border: photoPreview ? 'none' : '2px dashed #143d22',
-              background: photoPreview ? 'transparent' : '#0a1a10',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              overflow:'hidden', position:'relative',
-              transition: 'border-color 0.2s',
-            }}
-            onMouseEnter={e => { if (!photoPreview) e.currentTarget.style.borderColor = '#c9a84c'; }}
-            onMouseLeave={e => { if (!photoPreview) e.currentTarget.style.borderColor = '#143d22'; }}
-          >
-            {photoPreview ? (
-              <img src={photoPreview} alt="Preview" style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:12 }} />
-            ) : (
-              <span style={{ fontSize:28, opacity:0.4 }}>📷</span>
+  return (
+    <>
+      <ModalHeader title="Add Dignitary To Session" sub="Choose from the conference roster." onClose={onCancel} />
+      <div className="modal-body">
+        {error && <p className="auth-error">{error}</p>}
+        <FormField label="Conference Dignitary">
+          <select className="input" value={f.conference_dignitary_id} onChange={(e) => setField('conference_dignitary_id', e.target.value)} disabled={loadingConferenceDignitaries}>
+            <option value="">{loadingConferenceDignitaries ? 'Loading conference roster...' : 'Select dignitary'}</option>
+            {conferenceDignitaries.map((dignitary) => (
+              <option key={dignitary.id} value={dignitary.id}>
+                {dignitary.name} - {dignitary.title}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        {selected && (
+          <div className="card profile-summary-card">
+            <div className="profile-summary-title">{selected.name}</div>
+            <div className="profile-summary-subtitle">{selected.title}</div>
+            {(selected.church || selected.extension) && (
+              <div className="profile-summary-meta">{selected.church || 'No church listed'}{selected.extension ? ` - ${selected.extension}` : ''}</div>
             )}
           </div>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoSelect} style={{ display:'none' }} />
-          {photoPreview && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={removePhoto}
-              style={{ fontSize:11, color:'#ef4444', padding:'2px 0', marginTop:4, width:'100%', textAlign:'center' }}>
-              Remove
-            </button>
-          )}
-        </div>
-        <div style={{ flex:1 }}>
-          <div className="form-row" style={{ margin:0 }}>
-            <div style={{ flex:1 }}>
-              <FormField label="Name *"><input className="input" placeholder="John Mensah" value={f.name} onChange={e=>s('name',e.target.value)}/></FormField>
-            </div>
-            <div className="form-col-narrow">
-              <FormField label="Title *"><input className="input" placeholder="e.g. Presiding Bishop, H.E., Pastor" value={f.title} onChange={e=>s('title',e.target.value)}/></FormField>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="form-grid-2" style={{ marginBottom:16 }}>
-        <FormField label="Church"><input className="input" placeholder="GLT" value={f.church} onChange={e=>s('church',e.target.value)}/></FormField>
-        <FormField label="Branch / Extension"><input className="input" placeholder="North Campus" value={f.extension} onChange={e=>s('extension',e.target.value)}/></FormField>
-      </div>
+        )}
 
-      <div className="seating-assignment-box">
-        <div className="seating-assignment-label">Seating Assignment</div>
-        <div className="form-row">
-          <div style={{ flex:1.5 }}>
-            <FormField label="Section">
-              <select className="input" value={f.section} onChange={e=>s('section',e.target.value)}>
-                <option value="">Unassigned</option>
-                {OPEN_SECTIONS.map(sec => <option key={sec.id} value={sec.id}>{sec.label}</option>)}
-              </select>
-            </FormField>
-          </div>
-          <div style={{ flex:1, opacity: f.section ? 1 : 0.4, pointerEvents: f.section ? 'auto' : 'none' }}>
-            <FormField label="Row"><input className="input" type="number" min="1" value={f.row_num} onChange={e=>s('row_num',e.target.value?parseInt(e.target.value):'')}/></FormField>
-          </div>
-          <div style={{ flex:1, opacity: f.section ? 1 : 0.4, pointerEvents: f.section ? 'auto' : 'none' }}>
-            <FormField label="Seat / Col"><input className="input" type="number" min="1" value={f.col_num} onChange={e=>s('col_num',e.target.value?parseInt(e.target.value):'')}/></FormField>
+        <div className="seating-assignment-box">
+          <div className="seating-assignment-label">Session Seating</div>
+          <div className="form-row">
+            <div style={{ flex: 1.5 }}>
+              <FormField label="Section">
+                <select className="input" value={f.section} onChange={(e) => setField('section', e.target.value)} disabled={!openSections.length}>
+                  <option value="">{openSections.length ? 'Unassigned' : 'Sections coming later'}</option>
+                  {openSections.map((section) => (
+                    <option key={section.id} value={section.id}>{section.label}</option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
+            <div style={{ flex: 1 }}>
+              <FormField label="Row">
+                <input className="input" type="number" min="1" value={f.row_num} onChange={(e) => setField('row_num', e.target.value ? parseInt(e.target.value, 10) : '')} />
+              </FormField>
+            </div>
+            <div style={{ flex: 1 }}>
+              <FormField label="Seat">
+                <input className="input" type="number" min="1" value={f.col_num} onChange={(e) => setField('col_num', e.target.value ? parseInt(e.target.value, 10) : '')} />
+              </FormField>
+            </div>
           </div>
         </div>
+
+        <FormField label="Protocol Notes">
+          <textarea className="input" rows={3} placeholder="Optional session notes..." value={f.notes} onChange={(e) => setField('notes', e.target.value)} style={{ resize: 'vertical' }} />
+        </FormField>
+
+        <div className="form-actions">
+          <button className="btn btn-outline" onClick={onCancel} disabled={saving}>Cancel</button>
+          <button className="btn btn-gold" onClick={handleSave} disabled={!f.conference_dignitary_id || saving || loadingConferenceDignitaries}>
+            {saving ? 'Saving...' : 'Add To Session'}
+          </button>
+        </div>
       </div>
-      
-      <FormField label="Protocol Notes"><textarea className="input" rows={2} placeholder="Any special requirements..." value={f.notes} onChange={e=>s('notes',e.target.value)} style={{ resize:'vertical' }}/></FormField>
-      
-      <div className="form-actions">
-        <button className="btn btn-outline" onClick={onCancel} disabled={saving}>Cancel</button>
-        <button className="btn btn-gold" onClick={handleSave} disabled={!f.name || !f.title || saving}>{saving ? 'Saving...' : (isEdit ? 'Save Changes' : 'Register Dignitary')}</button>
-      </div>
-    </div>
-  </>;
+    </>
+  );
 }
 
-function DignitaryList({ attendees, canEdit, onView, onEdit, onDelete, onStatus }) {
-  const [fs,  setFs]  = useState('all');
-  const [fst, setFst] = useState('all');
-  const [q,   setQ]   = useState('');
-
-  const filtered = attendees.filter(d => {
-    if (fs  !== 'all' && d.section !== fs)  return false;
-    if (fst !== 'all' && d.status  !== fst) return false;
-    if (q && !d.name?.toLowerCase().includes(q.toLowerCase()) && !d.title?.toLowerCase().includes(q.toLowerCase())) return false;
-    return true;
+function EditSessionDignitaryForm({ auditorium, init = {}, onSave, onCancel }) {
+  const [f, setF] = useState({
+    section: init.section || '',
+    row_num: init.row_num || '',
+    col_num: init.col_num || '',
+    notes: init.notes || '',
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const openSections = getOpenSections(auditorium);
+
+  const setField = (key, value) => setF((current) => ({ ...current, [key]: value }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const cleaned = Object.fromEntries(Object.entries(f).map(([key, value]) => [key, value === '' ? null : value]));
+      await onSave(cleaned);
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      const msg = typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((item) => item.msg || JSON.stringify(item)).join(', ')
+          : err?.message || 'Failed to update dignitary';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <ModalHeader title="Edit Session Dignitary" sub={`${init.name || ''}${init.title ? ` - ${init.title}` : ''}`} onClose={onCancel} />
+      <div className="modal-body">
+        {error && <p className="auth-error">{error}</p>}
+
+        <div className="card profile-summary-card">
+          <div className="profile-summary-title">{init.name}</div>
+          <div className="profile-summary-subtitle">{init.title}</div>
+          {(init.church || init.extension) && (
+            <div className="profile-summary-meta">{init.church || 'No church listed'}{init.extension ? ` - ${init.extension}` : ''}</div>
+          )}
+        </div>
+
+        <div className="seating-assignment-box">
+          <div className="seating-assignment-label">Session Seating</div>
+          <div className="form-row">
+            <div style={{ flex: 1.5 }}>
+              <FormField label="Section">
+                <select className="input" value={f.section} onChange={(e) => setField('section', e.target.value)} disabled={!openSections.length}>
+                  <option value="">{openSections.length ? 'Unassigned' : 'Sections coming later'}</option>
+                  {openSections.map((section) => (
+                    <option key={section.id} value={section.id}>{section.label}</option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
+            <div style={{ flex: 1 }}>
+              <FormField label="Row">
+                <input className="input" type="number" min="1" value={f.row_num} onChange={(e) => setField('row_num', e.target.value ? parseInt(e.target.value, 10) : '')} />
+              </FormField>
+            </div>
+            <div style={{ flex: 1 }}>
+              <FormField label="Seat">
+                <input className="input" type="number" min="1" value={f.col_num} onChange={(e) => setField('col_num', e.target.value ? parseInt(e.target.value, 10) : '')} />
+              </FormField>
+            </div>
+          </div>
+        </div>
+
+        <FormField label="Protocol Notes">
+          <textarea className="input" rows={3} placeholder="Optional session notes..." value={f.notes} onChange={(e) => setField('notes', e.target.value)} style={{ resize: 'vertical' }} />
+        </FormField>
+
+        <div className="form-actions">
+          <button className="btn btn-outline" onClick={onCancel} disabled={saving}>Cancel</button>
+          <button className="btn btn-gold" onClick={handleSave} disabled={saving}>Save Changes</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const DignitaryList = memo(function DignitaryList({ auditorium, attendees, canEdit, canManageStatus, onView, onEdit, onDelete, onStatus }) {
+  const [sectionFilter, setSectionFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [q, setQ] = useState('');
+  const openSections = getOpenSections(auditorium);
+  const deferredQuery = useDeferredValue(q.trim().toLowerCase());
+  const statusLabels = useMemo(() => {
+    const labels = {};
+    STATUSES.forEach((statusOption) => {
+      labels[statusOption.id] = statusOption.label;
+    });
+    return labels;
+  }, []);
+
+  const filtered = useMemo(() => attendees.filter((dignitary) => {
+    if (sectionFilter !== 'all' && dignitary.section !== sectionFilter) return false;
+    if (statusFilter !== 'all' && dignitary.status !== statusFilter) return false;
+    if (
+      deferredQuery
+      && !dignitary.name?.toLowerCase().includes(deferredQuery)
+      && !dignitary.title?.toLowerCase().includes(deferredQuery)
+    ) return false;
+    return true;
+  }), [attendees, deferredQuery, sectionFilter, statusFilter]);
 
   return (
     <div>
       <div className="filter-bar">
-        <input className="input" placeholder="🔍 Search name or title…" value={q}
-          onChange={e => setQ(e.target.value)} style={{ flex:1, minWidth:180 }}/>
-        <select className="input filter-select" value={fs} onChange={e => setFs(e.target.value)}>
+        <input className="input" placeholder="Search name or title..." value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
+        <select className="input filter-select" value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)}>
           <option value="all">All Sections</option>
-          {OPEN_SECTIONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+          {openSections.map((section) => (
+            <option key={section.id} value={section.id}>{section.label}</option>
+          ))}
         </select>
-        <select className="input filter-select" value={fst} onChange={e => setFst(e.target.value)}>
+        <select className="input filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="all">All Statuses</option>
-          {STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+          {STATUSES.map((statusOption) => (
+            <option key={statusOption.id} value={statusOption.id}>{statusOption.label}</option>
+          ))}
         </select>
       </div>
 
       {filtered.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-state-icon">👤</div>
-          <p className="empty-state-text">No dignitaries found</p>
+          <div className="empty-state-icon">List</div>
+          <p className="empty-state-text">No session dignitaries found</p>
         </div>
       ) : (
         <div className="grid-cards">
-          {filtered.map(d => {
-            const sec = SECTIONS.find(s => s.id === d.section);
+          {filtered.map((dignitary) => {
+            const section = getSectionById(auditorium, dignitary.section);
+            const canUpdate = canManageStatus(dignitary);
             return (
-              <div key={d.id} className="card card-hover attendee-card"
-                onClick={() => onView(d)}>
+              <div key={dignitary.id} className="card card-hover attendee-card" onClick={() => onView(dignitary)}>
                 <div className="attendee-card-top">
-                  <div className="attendee-avatar" style={{
-                    borderColor: `${statusColor[d.status]||'#143d22'}44` }}>
-                    {d.picture_url
-                      ? <img src={d.picture_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                      : d.name?.[0]?.toUpperCase()}
+                  <div className="attendee-avatar" style={{ borderColor: `${statusColor[dignitary.status] || 'var(--line-strong)'}55` }}>
+                    {dignitary.picture_url
+                      ? <img src={dignitary.picture_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : dignitary.name?.[0]?.toUpperCase()}
                   </div>
                   <div className="attendee-info">
-                    <div className="attendee-name">{d.name}</div>
-                    <div className="attendee-title">{d.title}</div>
-                    {d.church && <div className="attendee-church">{d.church}{d.extension ? ` — ${d.extension}` : ''}</div>}
+                    <div className="attendee-name">{dignitary.name}</div>
+                    <div className="attendee-title">{dignitary.title}</div>
+                    {(dignitary.church || dignitary.extension) && (
+                      <div className="attendee-church">{dignitary.church || 'No church listed'}{dignitary.extension ? ` - ${dignitary.extension}` : ''}</div>
+                    )}
                   </div>
                 </div>
 
                 <div className="attendee-badges" style={{ marginBottom: 28 }}>
-                  <span className={`badge ${d.status}`}>{STATUSES.find(s=>s.id===d.status)?.label}</span>
-                  {sec && <span className="section-tag" style={{ color:sec.color, background:`${sec.color}11`,
-                    borderColor:`${sec.color}33` }}>{sec.label}</span>}
-                  {d.row_num && d.col_num && <span className="seat-ref">R{d.row_num}·S{d.col_num}</span>}
+                  <span className={`badge ${dignitary.status}`}>{statusLabels[dignitary.status]}</span>
+                  {section && (
+                    <span className="section-tag" style={{ color: section.color, background: `${section.color}11`, borderColor: `${section.color}33` }}>
+                      {section.label}
+                    </span>
+                  )}
+                  {dignitary.row_num && dignitary.col_num && <span className="seat-ref">R{dignitary.row_num} / S{dignitary.col_num}</span>}
                 </div>
 
-                <div className="attendee-card-actions"
-                  onClick={e => e.stopPropagation()}>
-                  <select value={d.status} onChange={e => onStatus(d.id, e.target.value)}
+                <div className="attendee-card-actions" onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={dignitary.status}
+                    onChange={(e) => onStatus(dignitary.id, e.target.value)}
                     className="inline-status-select"
-                    style={{ color:statusColor[d.status] }}>
-                    {STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                    disabled={!canUpdate}
+                    style={{ color: statusColor[dignitary.status] }}
+                  >
+                    {STATUSES.map((statusOption) => (
+                      <option key={statusOption.id} value={statusOption.id}>{statusOption.label}</option>
+                    ))}
                   </select>
-                  {canEdit && <>
-                    <button className="btn btn-ghost btn-sm" style={{ padding:'3px 7px', fontSize:13 }} onClick={() => onEdit(d)}>✏</button>
-                    <button className="btn btn-ghost btn-sm" style={{ padding:'3px 7px', fontSize:13, color:'#ef4444' }}
-                      onClick={() => { if (window.confirm('Remove this dignitary?')) onDelete(d.id); }}>🗑</button>
-                  </>}
+                  {canEdit && (
+                    <>
+                      <button className="btn btn-ghost btn-sm" style={{ padding: '3px 7px', fontSize: 13 }} onClick={() => onEdit(dignitary)}>Edit</button>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ padding: '3px 7px', fontSize: 13, color: 'var(--danger-strong)' }}
+                        onClick={() => {
+                          if (window.confirm('Remove this dignitary from the session?')) onDelete(dignitary.id);
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -249,7 +328,7 @@ function DignitaryList({ attendees, canEdit, onView, onEdit, onDelete, onStatus 
       )}
     </div>
   );
-}
+});
 
 function ImportArrangementModal({ targetSessionId, onClose, onSuccess }) {
   const [selectedConfId, setSelectedConfId] = useState('');
@@ -260,14 +339,14 @@ function ImportArrangementModal({ targetSessionId, onClose, onSuccess }) {
 
   const { conferencesQuery } = useConferences();
   const { sessionsQuery } = useSessions(selectedConfId);
-  const confs = conferencesQuery.data || [];
-  const sessions = (sessionsQuery.data || []).filter(s => s.id !== targetSessionId);
+  const conferences = conferencesQuery.data || [];
+  const sessions = (sessionsQuery.data || []).filter((session) => session.id !== targetSessionId);
 
-  const handleSelectSession = async (sid) => {
-    setSelectedSessionId(sid);
-    if (sid) {
+  const handleSelectSession = async (sessionId) => {
+    setSelectedSessionId(sessionId);
+    if (sessionId) {
       try {
-        const { data } = await api.get(`/sessions/${sid}/dignitaries`);
+        const { data } = await api.get(`/sessions/${sessionId}/dignitaries`);
         setPreview(data || []);
       } catch {
         setPreview([]);
@@ -291,82 +370,97 @@ function ImportArrangementModal({ targetSessionId, onClose, onSuccess }) {
     }
   };
 
-  return <>
-    <ModalHeader title="Import Arrangement" sub="Copy dignitaries from another session" onClose={onClose}/>
-    <div className="modal-body">
-      {error && <p style={{ color:'#ef4444', fontSize:13, padding:8, background:'#ef444422', borderRadius:6, marginBottom:12 }}>{error}</p>}
-
-      <FormField label="1. Pick a Conference">
-        <select className="input" value={selectedConfId} onChange={e => { setSelectedConfId(e.target.value); setSelectedSessionId(''); setPreview(null); }}>
-          <option value="">— Select Conference —</option>
-          {confs.map(c => <option key={c.id} value={c.id}>{c.name}{c.date ? ` (${format(new Date(c.date), 'dd MMM yyyy')})` : ''}</option>)}
-        </select>
-      </FormField>
-
-      {selectedConfId && (
-        <FormField label="2. Pick a Session to import from">
-          {sessionsQuery.isLoading ? <p style={{ color:'#4f6b56', fontSize:13 }}>Loading sessions...</p> : (
-            <select className="input" value={selectedSessionId} onChange={e => handleSelectSession(e.target.value)}>
-              <option value="">— Select Session —</option>
-              {sessions.map(s => <option key={s.id} value={s.id}>{s.name}{s.date ? ` (${format(new Date(s.date), 'dd MMM yyyy')})` : ''}</option>)}
-            </select>
-          )}
-          {sessions.length === 0 && !sessionsQuery.isLoading && <p style={{ color:'#4f6b56', fontSize:12, marginTop:4 }}>No other sessions in this conference</p>}
+  return (
+    <>
+      <ModalHeader title="Import Arrangement" sub="Copy dignitaries and seat placements from another session." onClose={onClose} />
+      <div className="modal-body">
+        {error && <p className="auth-error">{error}</p>}
+        <FormField label="Conference">
+          <select className="input" value={selectedConfId} onChange={(e) => { setSelectedConfId(e.target.value); setSelectedSessionId(''); setPreview(null); }}>
+            <option value="">Select conference</option>
+            {conferences.map((conference) => (
+              <option key={conference.id} value={conference.id}>
+                {conference.name}{conference.date ? ` (${formatDisplayDate(conference.date)})` : ''}
+              </option>
+            ))}
+          </select>
         </FormField>
-      )}
 
-      {preview !== null && (
-        <div style={{ margin:'16px 0', padding:16, background:'#0a1a10', borderRadius:8, border:'1px solid #143d22' }}>
-          <div style={{ fontSize:14, fontWeight:700, color:'#c9a84c', marginBottom:8 }}>Preview</div>
-          {preview.length === 0
-            ? <p style={{ color:'#4f6b56', fontSize:13 }}>This session has no dignitaries to import.</p>
-            : <>
-                <p style={{ color:'#e2f0e6', fontSize:13, marginBottom:8 }}><strong>{preview.length}</strong> dignitaries will be imported with status reset to <span style={{ color:'#64748b' }}>Pending</span>.</p>
-                <div style={{ maxHeight:200, overflow:'auto', display:'flex', flexDirection:'column', gap:4 }}>
-                  {preview.map(d => (
-                    <div key={d.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 8px', background:'#0e2618', borderRadius:4, fontSize:12 }}>
-                      <span style={{ color:'#c9a84c', fontWeight:600, minWidth:120 }}>{d.name}</span>
-                      <span style={{ color:'#4f6b56' }}>{d.title}</span>
-                      {d.section && <span style={{ color:'#2471a3', marginLeft:'auto' }}>{d.section}</span>}
-                    </div>
-                  ))}
-                </div>
-              </>
-          }
+        {selectedConfId && (
+          <FormField label="Session">
+            {sessionsQuery.isLoading ? (
+              <p className="page-subtitle">Loading sessions...</p>
+            ) : (
+              <select className="input" value={selectedSessionId} onChange={(e) => handleSelectSession(e.target.value)}>
+                <option value="">Select session</option>
+                {sessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.name}{session.date ? ` (${formatDisplayDate(session.date)})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FormField>
+        )}
+
+        {preview !== null && (
+          <div className="card profile-summary-card">
+            <div className="profile-summary-title">Import Preview</div>
+            <div className="profile-summary-meta">
+              {preview.length === 0
+                ? 'This session has no dignitaries to import.'
+                : `${preview.length} dignitaries will be imported with status reset to Pending.`}
+            </div>
+          </div>
+        )}
+
+        <div className="form-actions">
+          <button className="btn btn-outline" onClick={onClose} disabled={importing}>Cancel</button>
+          <button className="btn btn-gold" onClick={handleImport} disabled={!selectedSessionId || !preview?.length || importing}>
+            {importing ? 'Importing...' : `Import ${preview?.length || 0} Dignitaries`}
+          </button>
         </div>
-      )}
-
-      <div className="form-actions">
-        <button className="btn btn-outline" onClick={onClose} disabled={importing}>Cancel</button>
-        <button className="btn btn-gold" onClick={handleImport} disabled={!selectedSessionId || !preview?.length || importing}>
-          {importing ? 'Importing...' : `Import ${preview?.length || 0} Dignitaries`}
-        </button>
       </div>
-    </div>
-  </>;
+    </>
+  );
 }
 
-function SectionConfigModal({ sessionId, currentConfig, onClose, onSaved }) {
+function SectionConfigModal({ auditorium, sessionId, currentConfig, onClose, onSaved }) {
+  const openSections = getOpenSections(auditorium);
+  const defaultConfig = getDefaultConfig(auditorium);
   const [cfg, setCfg] = useState(() => {
     const merged = {};
-    OPEN_SECTIONS.forEach(sec => {
-      const cur = currentConfig?.[sec.id] || DEFAULT_CONFIG[sec.id] || { rows: 5, cols: 5 };
-      merged[sec.id] = { rows: cur.rows, cols: cur.cols };
+    openSections.forEach((section) => {
+      const current = currentConfig?.[section.id] || defaultConfig[section.id] || { rows: 5, cols: 5 };
+      merged[section.id] = { rows: String(current.rows), cols: String(current.cols) };
     });
     return merged;
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const update = (secId, field, val) => {
-    const num = Math.max(1, Math.min(20, parseInt(val) || 1));
-    setCfg(prev => ({ ...prev, [secId]: { ...prev[secId], [field]: num } }));
+  const update = (sectionId, field, value) => {
+    setCfg((current) => ({ ...current, [sectionId]: { ...current[sectionId], [field]: value } }));
+  };
+
+  const normalizeField = (sectionId, field) => {
+    setCfg((current) => ({
+      ...current,
+      [sectionId]: {
+        ...current[sectionId],
+        [field]: String(normalizeSectionCount(current[sectionId]?.[field], 1)),
+      },
+    }));
   };
 
   const resetDefaults = () => {
     const defaults = {};
-    OPEN_SECTIONS.forEach(sec => {
-      defaults[sec.id] = { ...DEFAULT_CONFIG[sec.id] || { rows: 5, cols: 5 } };
+    openSections.forEach((section) => {
+      const sectionDefaults = defaultConfig[section.id] || { rows: 5, cols: 5 };
+      defaults[section.id] = {
+        rows: String(sectionDefaults.rows),
+        cols: String(sectionDefaults.cols),
+      };
     });
     setCfg(defaults);
   };
@@ -375,7 +469,16 @@ function SectionConfigModal({ sessionId, currentConfig, onClose, onSaved }) {
     setSaving(true);
     setError('');
     try {
-      await api.patch(`/sessions/${sessionId}/seating-config`, cfg);
+      const normalizedConfig = Object.fromEntries(
+        Object.entries(cfg).map(([sectionId, sectionConfig]) => [
+          sectionId,
+          {
+            rows: normalizeSectionCount(sectionConfig.rows, 1),
+            cols: normalizeSectionCount(sectionConfig.cols, 1),
+          },
+        ]),
+      );
+      await api.patch(`/sessions/${sessionId}/seating-config`, normalizedConfig);
       onSaved();
       onClose();
     } catch (err) {
@@ -385,68 +488,91 @@ function SectionConfigModal({ sessionId, currentConfig, onClose, onSaved }) {
     }
   };
 
-  const totalSeats = Object.values(cfg).reduce((sum, c) => sum + c.rows * c.cols, 0);
+  const totalSeats = Object.values(cfg).reduce((sum, sectionConfig) => {
+    const rows = normalizeSectionCount(sectionConfig.rows, 0) || 0;
+    const cols = normalizeSectionCount(sectionConfig.cols, 0) || 0;
+    return sum + (rows * cols);
+  }, 0);
 
-  return <>
-    <ModalHeader title="Configure Sections" sub="Set rows & columns for each seating section" onClose={onClose}/>
-    <div className="modal-body">
-      {error && <p style={{ color: '#ef4444', marginBottom: 12, fontSize: 13, padding: 8, background: '#ef444422', borderRadius: 6 }}>{error}</p>}
-      
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:12, marginBottom:16 }}>
-        {OPEN_SECTIONS.map(sec => {
-          const c = cfg[sec.id];
-          return (
-            <div key={sec.id} style={{
-              display:'flex', flexDirection:'column', justifyContent:'space-between', padding:'16px',
-              background:'#051008', borderRadius:'12px', border:`1px solid ${sec.color}44`
-            }}>
-              <div style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:16 }}>
-                <div style={{ width:12, height:12, borderRadius:3, background:sec.color, flexShrink:0, marginTop:4 }}/>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:15, fontWeight:700, color:'#e2f0e6', lineHeight:1.2, marginBottom:2 }}>{sec.label}</div>
-                  <div style={{ fontSize:12, color:'#8cb398' }}>{c.rows * c.cols} seats</div>
-                </div>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#0a1a10', padding:'10px 12px', borderRadius:'8px', border:'1px solid #143d22' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ fontSize:10, color:'#4f6b56', textTransform:'uppercase', letterSpacing:'.5px' }}>Rows</div>
-                  <input className="input" type="number" min="1" max="20" value={c.rows}
-                    onChange={e => update(sec.id, 'rows', e.target.value)}
-                    style={{ width:56, textAlign:'center', padding:'6px 4px', fontSize:14 }}/>
-                </div>
-                <div style={{ fontSize:14, color:'#4f6b56', fontWeight: 300 }}>×</div>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <div style={{ fontSize:10, color:'#4f6b56', textTransform:'uppercase', letterSpacing:'.5px' }}>Cols</div>
-                  <input className="input" type="number" min="1" max="20" value={c.cols}
-                    onChange={e => update(sec.id, 'cols', e.target.value)}
-                    style={{ width:56, textAlign:'center', padding:'6px 4px', fontSize:14 }}/>
-                </div>
-              </div>
+  return (
+    <>
+      <ModalHeader title="Configure Sections" sub="Set rows and seats for each auditorium section." onClose={onClose} />
+      <div className="modal-body">
+        {error && <p className="auth-error">{error}</p>}
+
+        {!openSections.length ? (
+          <div className="empty-state" style={{ minHeight: 220 }}>
+            <div className="empty-state-icon">Map</div>
+            <p className="empty-state-text">This auditorium has no configurable sections yet</p>
+          </div>
+        ) : (
+          <>
+            <div className="config-grid">
+              {openSections.map((section) => {
+                const sectionConfig = cfg[section.id];
+                const rows = normalizeSectionCount(sectionConfig.rows, 0) || 0;
+                const cols = normalizeSectionCount(sectionConfig.cols, 0) || 0;
+                return (
+                  <div key={section.id} className="card config-card">
+                    <div className="config-card-head">
+                      <div className="seat-grid-legend-dot" style={{ background: section.color }} />
+                      <div>
+                        <div className="profile-summary-title" style={{ fontSize: 16 }}>{section.label}</div>
+                        <div className="profile-summary-meta">{rows * cols} seats</div>
+                      </div>
+                    </div>
+                    <div className="config-card-row">
+                      <FormField label="Rows">
+                        <input
+                          className="input"
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={sectionConfig.rows}
+                          onChange={(e) => update(section.id, 'rows', e.target.value)}
+                          onBlur={() => normalizeField(section.id, 'rows')}
+                        />
+                      </FormField>
+                      <FormField label="Seats">
+                        <input
+                          className="input"
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={sectionConfig.cols}
+                          onChange={(e) => update(section.id, 'cols', e.target.value)}
+                          onBlur={() => normalizeField(section.id, 'cols')}
+                        />
+                      </FormField>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
 
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-        <span style={{ fontSize:12, color:'#4f6b56' }}>Total capacity: <strong style={{ color:'#c9a84c' }}>{totalSeats}</strong> seats</span>
-        <button className="btn btn-ghost btn-sm" onClick={resetDefaults} style={{ fontSize:11 }}>↩ Reset Defaults</button>
-      </div>
+            <div className="config-footer">
+              <span className="page-subtitle">Total capacity: <strong>{totalSeats}</strong> seats</span>
+              <button className="btn btn-ghost btn-sm" onClick={resetDefaults}>Reset Defaults</button>
+            </div>
+          </>
+        )}
 
-      <div className="form-actions">
-        <button className="btn btn-outline" onClick={onClose} disabled={saving}>Cancel</button>
-        <button className="btn btn-gold" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Configuration'}</button>
+        <div className="form-actions">
+          <button className="btn btn-outline" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="btn btn-gold" onClick={handleSave} disabled={saving || !openSections.length}>
+            {saving ? 'Saving...' : 'Save Configuration'}
+          </button>
+        </div>
       </div>
-    </div>
-  </>;
+    </>
+  );
 }
 
 export function Session() {
   const { sessionId } = useParams();
-  const { isEditorOrAdmin } = useAuth();
-  
+  const { isEditorOrAdmin, canManageConferenceDignitary } = useAuth();
   const [tab, setTab] = useState('map');
   const [activeSec, setActiveSec] = useState(null);
-  
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -456,124 +582,174 @@ export function Session() {
 
   const queryClient = useQueryClient();
   const { data: sessionInfo, isLoading: loadingInfo } = useSessionData(sessionId);
-
   const { dignitariesQuery, createDignitary, updateDignitary, updateDignitaryStatus, deleteDignitary } = useDignitaries(sessionId);
   const { data: attendees = [], isLoading: loadingAtt } = dignitariesQuery;
 
-  if (loadingInfo || loadingAtt) return <Loader text="Loading Session Data..." />;
-  if (!sessionInfo) return <div className="empty-state" style={{ marginTop:100 }}>Session not found.</div>;
+  const confId = sessionInfo?.conf?.id;
+  const conferenceRoster = useConferenceDignitaries(confId, showAddModal);
+  const { data: conferenceDignitaries = [], isLoading: loadingConferenceRoster } = conferenceRoster.conferenceDignitariesQuery;
+  const auditorium = sessionInfo?.conf?.auditorium;
+  const { stats, usedConferenceDignitaryIds } = useMemo(() => {
+    const statusCounts = {};
+    const usedIds = new Set();
+
+    attendees.forEach((dignitary) => {
+      statusCounts[dignitary.status] = (statusCounts[dignitary.status] || 0) + 1;
+      if (dignitary.conference_dignitary_id) {
+        usedIds.add(dignitary.conference_dignitary_id);
+      }
+    });
+
+    return {
+      stats: STATUSES.map((statusOption) => ({ ...statusOption, cnt: statusCounts[statusOption.id] || 0 })),
+      usedConferenceDignitaryIds: usedIds,
+    };
+  }, [attendees]);
+  const availableConferenceDignitaries = useMemo(
+    () => conferenceDignitaries.filter((dignitary) => !usedConferenceDignitaryIds.has(dignitary.id)),
+    [conferenceDignitaries, usedConferenceDignitaryIds],
+  );
+  const supportsSections = auditoriumSupportsSections(auditorium);
+
+  if (loadingInfo || loadingAtt) return <Loader text="Loading session..." />;
+  if (!sessionInfo || !sessionInfo.conf) return <div className="empty-state" style={{ marginTop: 100 }}>Session not found.</div>;
 
   const { session, conf } = sessionInfo;
-  const stats = STATUSES.map(s => ({ ...s, cnt: attendees.filter(d => d.status === s.id).length }));
 
-  const handleSeatClick = (r, c, d) => {
-    if (d) setViewingAtn(d);
-    else if (isEditorOrAdmin) {
-      setPrefillLoc({ section: activeSec, row_num: r, col_num: c });
+  const canManageStatus = (dignitary) => canManageConferenceDignitary(dignitary.conference_dignitary_id);
+
+  const handleSeatClick = (rowNum, colNum, dignitary) => {
+    if (dignitary) {
+      setViewingAtn(dignitary);
+    } else if (isEditorOrAdmin) {
+      setPrefillLoc({ section: activeSec, row_num: rowNum, col_num: colNum });
       setShowAddModal(true);
     }
   };
 
   return (
     <div>
-      <Header confName={conf.name} sessionName={session.name} />
-      
+      <Header confName={conf.name} sessionName={session.name} backTo={`/conference/${conf.id}`} backLabel={conf.name} />
       <div className="page-container--wide fade-in">
         <div className="page-header page-header--start">
           <div>
             <h1 className="page-title">{session.name}</h1>
-            <p className="page-subtitle">{conf.name} · {session.date ? format(new Date(session.date), 'dd MMM yyyy') : '—'}{session.time ? ` at ${session.time}` : ''}</p>
+            <p className="page-subtitle">
+              {conf.name}
+              {session.date ? ` - ${formatDisplayDate(session.date)}` : ''}
+              {session.time ? ` at ${formatTimeLabel(session.time)}` : ''}
+            </p>
+            {conf.auditorium?.name && <p className="page-description">Auditorium: {conf.auditorium.name}</p>}
           </div>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-            {isEditorOrAdmin && <button className="btn btn-gold btn-sm" onClick={() => setShowAddModal(true)}>+ Register Dignitary</button>}
-            {isEditorOrAdmin && <button className="btn btn-outline btn-sm" onClick={() => setShowImportModal(true)}>📋 Import Arrangement</button>}
-            {isEditorOrAdmin && <button className="btn btn-outline btn-sm" onClick={() => setShowConfigModal(true)}>⚙ Configure Sections</button>}
+          <div className="page-header-actions">
+            {isEditorOrAdmin && <button className="btn btn-gold btn-sm" onClick={() => setShowAddModal(true)}>Add From Conference</button>}
+            {isEditorOrAdmin && <button className="btn btn-outline btn-sm" onClick={() => setShowImportModal(true)}>Import Arrangement</button>}
+            {isEditorOrAdmin && <button className="btn btn-outline btn-sm" onClick={() => setShowConfigModal(true)}>Configure Sections</button>}
           </div>
         </div>
 
-        {/* Stats */}
         <div className="stats-bar">
           <div className="card stat-card">
-            <div className="stat-value" style={{ color:'#c9a84c' }}>{attendees.length}</div>
-            <div className="stat-label">Total</div>
+            <div className="stat-value" style={{ color: 'var(--accent-strong)' }}>{attendees.length}</div>
+            <div className="stat-label">In Session</div>
           </div>
-          {stats.map(s => (
-            <div key={s.id} className="card stat-card">
-              <div className="stat-value" style={{ color:s.color }}>{s.cnt}</div>
-              <div className="stat-label">{s.label}</div>
+          {stats.map((statusOption) => (
+            <div key={statusOption.id} className="card stat-card">
+              <div className="stat-value" style={{ color: statusOption.color }}>{statusOption.cnt}</div>
+              <div className="stat-label">{statusOption.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Tabs */}
         <div className="tab-bar">
-          {[{id:'map',l:'🗺  Seating Map'},{id:'list',l:'📋  Dignitary List'}].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`tab-btn ${tab===t.id ? 'active' : ''}`}>
-              {t.l}
+          {[
+            { id: 'map', label: 'Seating Map' },
+            { id: 'list', label: 'Dignitary List' },
+          ].map((tabOption) => (
+            <button key={tabOption.id} onClick={() => setTab(tabOption.id)} className={`tab-btn ${tab === tabOption.id ? 'active' : ''}`}>
+              {tabOption.label}
             </button>
           ))}
         </div>
 
-        {tab === 'map' && <>
-          <VenueMap cfg={session.seating_config} attendees={attendees} activeSec={activeSec}
-            onSec={id => setActiveSec(activeSec === id ? null : id)}/>
-          {activeSec && (
-            <div style={{ marginTop:16 }} className="fade-in">
-              <SeatGrid sectionId={activeSec} cfg={session.seating_config} attendees={attendees} canEdit={isEditorOrAdmin}
-                onSeatClick={handleSeatClick}/>
-            </div>
-          )}
-        </>}
+        {tab === 'map' && (
+          <>
+            <VenueMap auditorium={auditorium} cfg={session.seating_config} attendees={attendees} activeSec={activeSec} onSec={(id) => setActiveSec(activeSec === id ? null : id)} />
+            {supportsSections && activeSec && (
+              <div style={{ marginTop: 16 }} className="fade-in">
+                <SeatGrid auditorium={auditorium} sectionId={activeSec} cfg={session.seating_config} attendees={attendees} canEdit={isEditorOrAdmin} onSeatClick={handleSeatClick} />
+              </div>
+            )}
+          </>
+        )}
 
         {tab === 'list' && (
-          <DignitaryList attendees={attendees} canEdit={isEditorOrAdmin} 
-            onView={setViewingAtn} 
-            onEdit={setEditingAtn} 
-            onDelete={id => deleteDignitary.mutate(id)} 
-            onStatus={(id, status) => updateDignitaryStatus.mutate({ id, status })}/>
+          <DignitaryList
+            auditorium={auditorium}
+            attendees={attendees}
+            canEdit={isEditorOrAdmin}
+            canManageStatus={canManageStatus}
+            onView={setViewingAtn}
+            onEdit={setEditingAtn}
+            onDelete={(id) => deleteDignitary.mutate(id)}
+            onStatus={(id, statusValue) => updateDignitaryStatus.mutate({ id, status: statusValue })}
+          />
         )}
       </div>
 
       {showAddModal && (
         <Modal onClose={() => { setShowAddModal(false); setPrefillLoc(null); }}>
-          <DignitaryForm 
-            sessionId={sessionId} 
-            init={prefillLoc || {}} 
-            isEdit={false} 
+          <AddDignitaryToSessionForm
+            auditorium={auditorium}
+            conferenceDignitaries={availableConferenceDignitaries}
+            initialAssignment={prefillLoc}
+            loadingConferenceDignitaries={loadingConferenceRoster}
             onSave={async (data) => {
               await createDignitary.mutateAsync(data);
-              setShowAddModal(false); setPrefillLoc(null);
-            }} 
-            onCancel={() => { setShowAddModal(false); setPrefillLoc(null); }} />
+              setShowAddModal(false);
+              setPrefillLoc(null);
+            }}
+            onCancel={() => {
+              setShowAddModal(false);
+              setPrefillLoc(null);
+            }}
+          />
         </Modal>
       )}
 
       {editingAtn && (
         <Modal onClose={() => setEditingAtn(null)}>
-          <DignitaryForm 
-            sessionId={sessionId} 
-            init={editingAtn} 
-            isEdit={true} 
+          <EditSessionDignitaryForm
+            auditorium={auditorium}
+            init={editingAtn}
             onSave={async (data) => {
               await updateDignitary.mutateAsync({ id: editingAtn.id, data });
-              setEditingAtn(null); if (viewingAtn) setViewingAtn(null);
-            }} 
-            onCancel={() => setEditingAtn(null)} />
+              setEditingAtn(null);
+              if (viewingAtn) setViewingAtn(null);
+            }}
+            onCancel={() => setEditingAtn(null)}
+          />
         </Modal>
       )}
 
       {viewingAtn && (
         <Modal onClose={() => setViewingAtn(null)}>
-          <AttendeeProfile 
-            atn={viewingAtn} 
-            canEdit={isEditorOrAdmin} 
-            onEdit={() => { setEditingAtn(viewingAtn); setViewingAtn(null); }} 
-            onStatus={(status) => {
-               updateDignitaryStatus.mutate({ id: viewingAtn.id, status });
-               setViewingAtn({ ...viewingAtn, status }); 
-            }} 
-            onClose={() => setViewingAtn(null)} />
+          <AttendeeProfile
+            auditorium={auditorium}
+            atn={viewingAtn}
+            canEdit={isEditorOrAdmin}
+            canManageStatus={canManageStatus(viewingAtn)}
+            onEdit={() => {
+              if (!isEditorOrAdmin) return;
+              setEditingAtn(viewingAtn);
+              setViewingAtn(null);
+            }}
+            onStatus={(statusValue) => {
+              updateDignitaryStatus.mutate({ id: viewingAtn.id, status: statusValue });
+              setViewingAtn({ ...viewingAtn, status: statusValue });
+            }}
+            onClose={() => setViewingAtn(null)}
+          />
         </Modal>
       )}
 
@@ -590,6 +766,7 @@ export function Session() {
       {showConfigModal && (
         <Modal onClose={() => setShowConfigModal(false)}>
           <SectionConfigModal
+            auditorium={auditorium}
             sessionId={sessionId}
             currentConfig={session.seating_config}
             onClose={() => setShowConfigModal(false)}

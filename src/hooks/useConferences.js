@@ -1,7 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/apiClient';
+import { supabase } from '../lib/supabase';
 
-/* ── List all conferences ── */
+function errorMatchesMissingField(error, relationName, fieldName) {
+  const detail = error?.response?.data?.detail;
+  const message = typeof detail === 'string' ? detail : JSON.stringify(detail || error?.message || '');
+  const haystack = message.toLowerCase();
+  return haystack.includes(relationName.toLowerCase()) && haystack.includes(fieldName.toLowerCase());
+}
+
 export function useConferences() {
   const queryClient = useQueryClient();
 
@@ -10,28 +18,58 @@ export function useConferences() {
     queryFn: async () => {
       const { data } = await api.get('/conferences/');
       return data;
-    }
+    },
   });
+
+  useEffect(() => {
+    const channel = supabase.channel('public:conferences')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conferences' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['conferences'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const createConference = useMutation({
     mutationFn: async (newConf) => {
-      const { data } = await api.post('/conferences/', newConf);
-      return data;
+      try {
+        const { data } = await api.post('/conferences/', newConf);
+        return data;
+      } catch (error) {
+        if (Object.prototype.hasOwnProperty.call(newConf, 'time') && errorMatchesMissingField(error, 'conferences', 'time')) {
+          const { time, ...fallbackPayload } = newConf;
+          const { data } = await api.post('/conferences/', fallbackPayload);
+          return data;
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conferences'] });
-    }
+    },
   });
 
   const updateConference = useMutation({
     mutationFn: async ({ id, data }) => {
-      const { data: result } = await api.patch(`/conferences/${id}`, data);
-      return result;
+      try {
+        const { data: result } = await api.patch(`/conferences/${id}`, data);
+        return result;
+      } catch (error) {
+        if (Object.prototype.hasOwnProperty.call(data, 'time') && errorMatchesMissingField(error, 'conferences', 'time')) {
+          const { time, ...fallbackPayload } = data;
+          const { data: result } = await api.patch(`/conferences/${id}`, fallbackPayload);
+          return result;
+        }
+        throw error;
+      }
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['conferences'] });
       queryClient.invalidateQueries({ queryKey: ['conference', id] });
-    }
+    },
   });
 
   const deleteConference = useMutation({
@@ -40,7 +78,7 @@ export function useConferences() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conferences'] });
-    }
+    },
   });
 
   return {
@@ -51,8 +89,24 @@ export function useConferences() {
   };
 }
 
-/* ── Fetch a single conference by ID (separate hook to respect Rules of Hooks) ── */
 export function useConference(confId) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!confId) return undefined;
+
+    const channel = supabase.channel(`public:conference:${confId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conferences', filter: `id=eq.${confId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['conference', confId] });
+        queryClient.invalidateQueries({ queryKey: ['conferences'] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [confId, queryClient]);
+
   return useQuery({
     queryKey: ['conference', confId],
     queryFn: async () => {
@@ -62,4 +116,56 @@ export function useConference(confId) {
     },
     enabled: !!confId,
   });
+}
+
+export function useConferenceProtocolAssignments(confId, enabled = true) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!confId) return undefined;
+
+    const channel = supabase.channel(`public:conference-protocol-assignments:${confId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conference_protocol_assignments', filter: `conference_id=eq.${confId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['conference-protocol-assignments', confId] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [confId, queryClient]);
+
+  const assignmentsQuery = useQuery({
+    queryKey: ['conference-protocol-assignments', confId],
+    queryFn: async () => {
+      if (!confId) return [];
+      const { data } = await api.get(`/conferences/${confId}/protocol-assignments`);
+      return data;
+    },
+    enabled: !!confId && enabled,
+  });
+
+  const updateAssignment = useMutation({
+    mutationFn: async ({ userId, payload }) => {
+      const { data } = await api.put(`/conferences/${confId}/protocol-assignments/${userId}`, payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conference-protocol-assignments', confId] });
+      queryClient.invalidateQueries({ queryKey: ['conference-dignitaries', confId] });
+    },
+  });
+
+  const exportArrivals = async () => {
+    const response = await api.get(`/conferences/${confId}/arrival-export`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  };
+
+  return {
+    assignmentsQuery,
+    updateAssignment,
+    exportArrivals,
+  };
 }
