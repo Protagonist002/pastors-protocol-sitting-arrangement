@@ -2736,3 +2736,285 @@ select.input,
     font-size: 0.96rem;
   }
 }
+
+/* App-wide mobile responsiveness pass */
+body {
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page-header > :first-child,
+.page-header > :last-child:not(:first-child),
+.page-header-actions,
+.section-card,
+.attendee-card,
+.user-admin-card,
+.modal-list-item,
+.config-card,
+.profile-assignment-card,
+.profile-summary-card {
+  min-width: 0;
+}
+
+.page-header-actions,
+.section-card-actions,
+.form-actions,
+.attendee-card-actions,
+.modal-list-item,
+.config-footer,
+.profile-assignment-top {
+  flex-wrap: wrap;
+}
+
+.tab-bar,
+.page-chip-row,
+.card-badge-row,
+.attendee-badges,
+.stats-bar,
+.profile-page-name-row,
+.header-actions {
+  min-width: 0;
+}
+
+.tab-bar,
+.seat-grid-scroll {
+  scrollbar-width: thin;
+}
+
+@media (max-width: 900px) {
+  .page-header-actions {
+    justify-content: flex-start;
+  }
+
+  .page-header-actions .btn {
+    flex: 1 1 220px;
+    min-width: min(220px, 100%);
+  }
+
+  .grid-cards--wide {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .header-breadcrumbs,
+  .header-account {
+    display: none;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .header-logo {
+    min-width: 0;
+  }
+
+  .header-logo-title {
+    max-width: 16ch;
+    font-size: 0.94rem;
+    line-height: 1.1;
+  }
+
+  .page-header-actions,
+  .section-card-actions,
+  .form-actions,
+  .modal-list-item,
+  .config-footer,
+  .profile-assignment-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-header-actions .btn,
+  .section-card-actions .btn,
+  .form-actions .btn,
+  .modal-list-item .btn,
+  .config-footer .btn {
+    width: 100%;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-row > * {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .tab-bar {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 6px;
+  }
+
+  .tab-bar--wrap {
+    overflow-x: visible;
+    flex-wrap: wrap;
+    padding-bottom: 5px;
+  }
+
+  .tab-btn {
+    flex: 0 0 auto;
+  }
+
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .stat-card {
+    min-width: 0;
+    width: 100%;
+    flex: none;
+  }
+
+  .filter-bar > * {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+
+  .attendee-card {
+    min-height: 0;
+  }
+
+  .attendee-card-actions {
+    position: static;
+    right: auto;
+    bottom: auto;
+    margin-top: 16px;
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  .modal-list-item > :first-child {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .config-card-row,
+  .profile-page-meta-grid,
+  .profile-assignment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seat-grid-header {
+    align-items: flex-start;
+  }
+
+  .seat-grid-info,
+  .seat-grid-legend {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .seat-grid-scroll {
+    margin-inline: -4px;
+    padding-inline: 4px 0;
+    overscroll-behavior-x: contain;
+  }
+
+  .seat-grid-cols,
+  .seat-grid-row {
+    width: max-content;
+  }
+
+  .venue-map {
+    padding: 16px;
+  }
+
+  .venue-map-frame,
+  .venue-map-static-frame {
+    border-radius: 20px;
+  }
+
+  .venue-map-hotspot-meta,
+  .venue-map-hotspot-closed {
+    font-size: 0.5rem;
+    padding: 3px 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn {
+    white-space: normal;
+  }
+
+  .header-logo-title {
+    max-width: 11ch;
+    font-size: 0.88rem;
+  }
+
+  .page-subtitle,
+  .page-description,
+  .section-card-subtitle,
+  .profile-summary-meta {
+    word-break: break-word;
+  }
+
+  .stats-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header-actions .btn,
+  .section-card-actions .btn,
+  .form-actions .btn,
+  .attendee-card-actions .btn,
+  .attendee-card-actions .inline-status-select {
+    width: 100%;
+  }
+
+  .tab-btn {
+    min-width: max-content;
+    padding-inline: 12px;
+  }
+
+  .seat-grid-wrap {
+    padding: 14px;
+  }
+
+  .seat-grid-cols {
+    padding-left: 30px;
+  }
+
+  .seat,
+  .seat-grid-col-label {
+    width: 26px;
+  }
+
+  .seat-grid-row-label {
+    width: 24px;
+  }
+
+  .venue-map {
+    padding: 14px;
+  }
+
+  .venue-map-hotspot {
+    padding: 6px;
+    border-width: 1px;
+  }
+
+  .venue-map-hotspot-label {
+    font-size: 0.52rem;
+  }
+
+  .venue-map-hotspot-meta,
+  .venue-map-hotspot-closed {
+    display: none;
+  }
+}
