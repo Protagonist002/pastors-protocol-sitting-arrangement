@@ -8,7 +8,6 @@ export function AttendeeProfile({ auditorium, atn, canEdit, canManageStatus, onE
     <>
       <ModalHeader
         title="Dignitary Profile"
-        sub={atn.church ? `${atn.church}${atn.extension ? ` - ${atn.extension}` : ''}` : ''}
         onClose={onClose}
       />
       <div className="modal-body">
@@ -72,11 +71,6 @@ export function AttendeeProfile({ auditorium, atn, canEdit, canManageStatus, onE
               </button>
             ))}
           </div>
-          {!canManageStatus && (
-            <p className="profile-help-text">
-              Only admins or the protocol officer assigned to this dignitary can change status.
-            </p>
-          )}
         </div>
 
         <div className="profile-modal-actions">

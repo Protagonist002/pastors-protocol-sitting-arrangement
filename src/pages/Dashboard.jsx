@@ -107,7 +107,6 @@ export function Dashboard() {
               <div className="dashboard-hero-top">
                 <div className="dashboard-hero-copy">
                   <h1 className="dashboard-hero-title">Conferences</h1>
-                  <p className="dashboard-hero-subtitle">{confList.length} conference{confList.length!==1?'s':''} on record</p>
                 </div>
                 {isAdmin && (
                   <button className="btn btn-gold dashboard-hero-action" onClick={() => setShowNew(true)}>
@@ -123,7 +122,6 @@ export function Dashboard() {
               <div className="empty-state">
                 <div className="empty-state-icon">📋</div>
                 <p className="empty-state-text">No conferences yet</p>
-                {isAdmin && <p className="empty-state-sub">Create your first conference to get started</p>}
               </div>
             ) : (
               <div className="grid-cards grid-cards--wide">
@@ -151,9 +149,7 @@ export function Dashboard() {
                       {c.auditorium?.name && (
                         <span className="dashboard-card-tag">{c.auditorium.name}</span>
                       )}
-                      <span className="dashboard-card-link">
-                        Manage Sessions →
-                      </span>
+                      <span className="dashboard-card-link">Sessions</span>
                     </div>
                   </div>
                 ))}

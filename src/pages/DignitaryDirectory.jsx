@@ -99,7 +99,6 @@ function DirectoryForm({ init = {}, isEdit, onSave, onCancel, onUploadPhoto }) {
           </div>
           <div className="directory-photo-fields">
             <input className="input" type="file" accept="image/*" onChange={handlePictureChange} />
-            <p className="directory-photo-help">Choose an image file from your device. PNG, JPG, JPEG, or WebP only.</p>
             {(previewUrl || f.picture_url) && (
               <button type="button" className="btn btn-ghost btn-sm" onClick={handleRemovePicture}>
                 Remove Image
@@ -149,7 +148,6 @@ export function DignitaryDirectory() {
         <div className="page-header">
           <div>
             <h1 className="page-title">Dignitary Directory</h1>
-            <p className="page-subtitle">{dignitaries.length} saved dignitar{dignitaries.length === 1 ? 'y' : 'ies'} available for conferences</p>
             {isEditorOrAdmin && (
               <div className="page-chip-row">
                 <button className="btn btn-gold" onClick={() => setShowNew(true)}>+ New Dignitary</button>

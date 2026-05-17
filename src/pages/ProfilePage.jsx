@@ -336,9 +336,7 @@ export function ProfilePage() {
               </div>
               {isAdmin && !isOwnProfile && (
                 <div className="section-card-actions">
-                  <button className="btn btn-outline btn-sm" type="button" onClick={() => navigate('/users')}>
-                    Open Manage Access
-                  </button>
+                  <button className="btn btn-outline btn-sm" type="button" onClick={() => navigate('/users')}>Manage Access</button>
                 </div>
               )}
             </div>
@@ -347,7 +345,6 @@ export function ProfilePage() {
               <div className="empty-state profile-page-empty">
                 <div className="empty-state-icon">Conference</div>
                 <p className="empty-state-text">No conferences available yet.</p>
-                <p className="empty-state-sub">Conference roles will appear here as soon as conferences are added to the app.</p>
               </div>
             ) : (
               <>

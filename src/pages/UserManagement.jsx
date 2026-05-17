@@ -164,7 +164,6 @@ export function UserManagement() {
         <div className="page-header page-header--start">
           <div>
             <h1 className="page-title">Manage Access</h1>
-            <p className="page-subtitle">Switch conference tabs to assign roles and dignitary ownership for protocol officers.</p>
           </div>
         </div>
 
@@ -185,7 +184,6 @@ export function UserManagement() {
                 <div className="section-card-head">
                   <div>
                     <h2 className="section-card-title">Conference Roles</h2>
-                    <p className="section-card-subtitle">Assign protocol officers conference roles.</p>
                   </div>
                   <span className="section-card-toggle-icon" aria-hidden="true">
                     <ChevronDown size={18} />
@@ -199,7 +197,6 @@ export function UserManagement() {
                     <div className="empty-state profile-page-empty">
                       <div className="empty-state-icon">Conference</div>
                       <p className="empty-state-text">No conferences available yet.</p>
-                      <p className="empty-state-sub">Create a conference first to manage conference roles.</p>
                     </div>
                   ) : (
                     <>
@@ -226,7 +223,6 @@ export function UserManagement() {
                         <div className="empty-state">
                           <div className="empty-state-icon">Conference</div>
                           <p className="empty-state-text">Select a conference first.</p>
-                          <p className="empty-state-sub">Choose a conference tab to manage protocol officers.</p>
                         </div>
                       )}
 
@@ -328,7 +324,6 @@ export function UserManagement() {
                 <div className="section-card-head">
                   <div>
                     <h2 className="section-card-title">App Roles</h2>
-                    <p className="section-card-subtitle">Control app roles and remove protocol users when needed.</p>
                   </div>
                   <span className="section-card-toggle-icon" aria-hidden="true">
                     <ChevronDown size={18} />

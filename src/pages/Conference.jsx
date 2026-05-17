@@ -95,11 +95,11 @@ function AddConferenceDignitaryModal({ available, adding, loading, onAdd, onClos
 
   return (
     <>
-      <ModalHeader title="Add Dignitaries To Conference" sub="Pick from the saved dignitary directory." onClose={onClose} />
+      <ModalHeader title="Add Dignitaries To Conference" onClose={onClose} />
       <div className="modal-body">
         <div className="filter-bar" style={{ marginBottom: 16 }}>
-          <input className="input" placeholder="Search directory..." value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
-          {onOpenDirectory && <button className="btn btn-outline btn-sm" onClick={onOpenDirectory}>Open Directory</button>}
+          <input className="input" placeholder="Search..." value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
+          {onOpenDirectory && <button className="btn btn-outline btn-sm" onClick={onOpenDirectory}>Directory</button>}
         </div>
 
         {loading ? (
@@ -108,7 +108,6 @@ function AddConferenceDignitaryModal({ available, adding, loading, onAdd, onClos
           <div className="empty-state" style={{ minHeight: 220 }}>
             <div className="empty-state-icon">Roster</div>
             <p className="empty-state-text">No unassigned directory dignitaries found</p>
-            <p className="empty-state-sub">Create more master dignitaries in the directory, then return here to attach them to this conference.</p>
           </div>
         ) : (
           <div className="modal-list-stack">
@@ -214,7 +213,6 @@ export function Conference() {
               <span className="page-chip">{conferenceDignitaries.length} dignitaries</span>
               <span className="page-chip">{sessions.length} sessions</span>
             </div>
-            {conf.description && <p className="page-description">{conf.description}</p>}
           </div>
         </div>
 
@@ -235,7 +233,6 @@ export function Conference() {
             <div className="section-card-head">
               <div>
                 <h2 className="section-card-title">Sessions</h2>
-                <p className="section-card-subtitle">Open a session to manage arrival status, assign seats, and configure the map.</p>
               </div>
               {isEditorOrAdmin && (
                 <div className="section-card-actions">
@@ -248,7 +245,6 @@ export function Conference() {
               <div className="empty-state">
                 <div className="empty-state-icon">Session</div>
                 <p className="empty-state-text">No sessions yet</p>
-                {isEditorOrAdmin && <p className="empty-state-sub">Add a session to begin seating and arrival management.</p>}
               </div>
             ) : (
               <div className="grid-cards">
@@ -291,10 +287,9 @@ export function Conference() {
             <div className="section-card-head">
               <div>
                 <h2 className="section-card-title">Dignitaries</h2>
-                <p className="section-card-subtitle">Everyone added here is available across all sessions in this conference.</p>
               </div>
               <div className="section-card-actions">
-                {isAdmin && <button className="btn btn-outline btn-sm" onClick={() => navigate('/dignitaries')}>Open Directory</button>}
+                {isAdmin && <button className="btn btn-outline btn-sm" onClick={() => navigate('/dignitaries')}>Directory</button>}
                 {isEditorOrAdmin && (
                   <button
                     className="btn btn-gold btn-sm btn-icon"
@@ -312,7 +307,6 @@ export function Conference() {
               <div className="empty-state" style={{ minHeight: 180 }}>
                 <div className="empty-state-icon">Roster</div>
                 <p className="empty-state-text">No dignitaries added to this conference yet</p>
-                <p className="empty-state-sub">Add people from the dignitary directory and they will be available for every session in this conference.</p>
               </div>
             ) : (
               <div className="grid-cards">
@@ -362,7 +356,6 @@ export function Conference() {
             <div className="section-card-head">
               <div>
                 <h2 className="section-card-title">Arrivals</h2>
-                <p className="section-card-subtitle">Track the first session where each conference dignitary arrived and download a readable report.</p>
               </div>
               {isAdmin && (
                 <div className="section-card-actions">
@@ -378,9 +371,6 @@ export function Conference() {
               <div className="profile-summary-subtitle">
                 {arrivedConferenceDignitaries.length} of {conferenceDignitaries.length} dignitar{conferenceDignitaries.length === 1 ? 'y has' : 'ies have'} recorded first arrivals
               </div>
-              {!isAdmin && (
-                <p className="profile-help-text">Only admins can download the arrivals document.</p>
-              )}
             </div>
           </section>
         )}

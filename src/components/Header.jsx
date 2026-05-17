@@ -56,10 +56,7 @@ export function Header({ confName, sessionName, backTo, backLabel }) {
     <>
       <header className="app-header">
         <div className="header-logo" onClick={() => navigate('/')}>
-          <img src="/logo.png" alt="GLT Logo" />
-          <div>
-            <div className="header-logo-title">Dignitary Management System</div>
-          </div>
+          <div className="header-logo-title">Dignitary Management System</div>
         </div>
 
         <div className="header-breadcrumbs">

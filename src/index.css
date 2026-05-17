@@ -805,18 +805,20 @@ textarea.input {
 }
 
 .header-logo {
+  flex: 1 1 auto;
   gap: 12px;
-}
-
-.header-logo img {
-  height: 38px;
-  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.22));
+  min-width: 0;
 }
 
 .header-logo-title {
+  display: block;
   font-size: 1.1rem;
   color: var(--gold-bright);
   letter-spacing: -0.01em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-logo-sub {
@@ -834,7 +836,9 @@ textarea.input {
 }
 
 .header-actions {
+  flex: 0 0 auto;
   gap: 10px;
+  margin-left: auto;
   padding: 0;
   border: 0;
   background: transparent;
@@ -912,6 +916,10 @@ textarea.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.header-actions > * {
+  min-width: 0;
 }
 
 .header-drawer-overlay {
@@ -2791,11 +2799,14 @@ img {
 @media (max-width: 900px) {
   .page-header-actions {
     justify-content: flex-start;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .page-header-actions .btn {
-    flex: 1 1 220px;
-    min-width: min(220px, 100%);
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
   }
 
   .grid-cards--wide {
@@ -2818,8 +2829,8 @@ img {
   }
 
   .header-logo-title {
-    max-width: 16ch;
-    font-size: 0.94rem;
+    max-width: 12ch;
+    font-size: 0.9rem;
     line-height: 1.1;
   }
 
@@ -2837,8 +2848,10 @@ img {
   .section-card-actions .btn,
   .form-actions .btn,
   .modal-list-item .btn,
-  .config-footer .btn {
+  .config-footer .btn,
+  .section-card-actions > * {
     width: 100%;
+    min-width: 0;
   }
 
   .form-row {
@@ -2865,6 +2878,7 @@ img {
 
   .tab-btn {
     flex: 0 0 auto;
+    min-width: 0;
   }
 
   .stats-bar {
@@ -2955,8 +2969,8 @@ img {
   }
 
   .header-logo-title {
-    max-width: 11ch;
-    font-size: 0.88rem;
+    max-width: 9ch;
+    font-size: 0.82rem;
   }
 
   .page-subtitle,

@@ -64,7 +64,7 @@ function AddDignitaryToSessionForm({ auditorium, conferenceDignitaries, initialA
 
   return (
     <>
-      <ModalHeader title="Add Dignitary To Session" sub="Choose from the conference roster." onClose={onCancel} />
+      <ModalHeader title="Add Dignitary To Session" onClose={onCancel} />
       <div className="modal-body">
         {error && <p className="auth-error">{error}</p>}
         <FormField label="Conference Dignitary">
@@ -372,7 +372,7 @@ function ImportArrangementModal({ targetSessionId, onClose, onSuccess }) {
 
   return (
     <>
-      <ModalHeader title="Import Arrangement" sub="Copy dignitaries and seat placements from another session." onClose={onClose} />
+      <ModalHeader title="Import Arrangement" onClose={onClose} />
       <div className="modal-body">
         {error && <p className="auth-error">{error}</p>}
         <FormField label="Conference">
@@ -496,7 +496,7 @@ function SectionConfigModal({ auditorium, sessionId, currentConfig, onClose, onS
 
   return (
     <>
-      <ModalHeader title="Configure Sections" sub="Set rows and seats for each auditorium section." onClose={onClose} />
+      <ModalHeader title="Configure Sections" onClose={onClose} />
       <div className="modal-body">
         {error && <p className="auth-error">{error}</p>}
 
@@ -551,7 +551,7 @@ function SectionConfigModal({ auditorium, sessionId, currentConfig, onClose, onS
             </div>
 
             <div className="config-footer">
-              <span className="page-subtitle">Total capacity: <strong>{totalSeats}</strong> seats</span>
+              <span className="page-subtitle"><strong>{totalSeats}</strong> seats</span>
               <button className="btn btn-ghost btn-sm" onClick={resetDefaults}>Reset Defaults</button>
             </div>
           </>
@@ -639,12 +639,12 @@ export function Session() {
               {session.date ? ` - ${formatDisplayDate(session.date)}` : ''}
               {session.time ? ` at ${formatTimeLabel(session.time)}` : ''}
             </p>
-            {conf.auditorium?.name && <p className="page-description">Auditorium: {conf.auditorium.name}</p>}
+            {conf.auditorium?.name && <div className="page-chip-row"><span className="page-chip">{conf.auditorium.name}</span></div>}
           </div>
           <div className="page-header-actions">
             {isEditorOrAdmin && <button className="btn btn-gold btn-sm" onClick={() => setShowAddModal(true)}>Add From Conference</button>}
             {isEditorOrAdmin && <button className="btn btn-outline btn-sm" onClick={() => setShowImportModal(true)}>Import Arrangement</button>}
-            {isEditorOrAdmin && <button className="btn btn-outline btn-sm" onClick={() => setShowConfigModal(true)}>Configure Sections</button>}
+            {isEditorOrAdmin && <button className="btn btn-outline btn-sm" onClick={() => setShowConfigModal(true)}>Sections</button>}
           </div>
         </div>
 

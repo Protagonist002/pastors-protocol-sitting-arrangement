@@ -110,7 +110,6 @@ export const VenueMap = memo(function VenueMap({ auditorium, cfg, attendees, act
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
           <div>
             <h3 style={{ color: '#e2f0e6', marginBottom: 4 }}>{auditorium?.name || 'Auditorium Preview'}</h3>
-            <p style={{ color: '#8cb398', fontSize: 13 }}>Sections for this auditorium will be configured later. You can still add conference dignitaries and session attendees now.</p>
           </div>
         </div>
         {imageUrl ? (
