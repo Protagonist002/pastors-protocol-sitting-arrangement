@@ -61,7 +61,7 @@ export function RoleTag({ role }) {
   const map = {
     admin: { c: 'var(--warning-strong)', l: 'Admin' },
     editor: { c: 'var(--accent-strong)', l: 'Editor' },
-    protocol: { c: 'var(--success-strong)', l: 'Protocol Officer' },
+    protocol: { c: 'var(--success-strong)', l: 'protocol' },
     unknown: { c: 'var(--text-muted)', l: 'Loading Role' },
   };
   const r = map[role] || map.unknown;

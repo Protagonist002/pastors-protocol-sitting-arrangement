@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { api } from '../services/apiClient';
 import { AuthContext } from './auth-context';
@@ -8,6 +8,20 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchProfile = useCallback(async (attempt = 0) => {
+    try {
+      const { data } = await api.get('/users/me');
+      setProfile(data || null);
+    } catch (err) {
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+        return fetchProfile(attempt + 1);
+      }
+      setProfile(null);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
@@ -28,7 +42,7 @@ export function AuthProvider({ children }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchProfile]);
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -45,21 +59,7 @@ export function AuthProvider({ children }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
-
-  const fetchProfile = async (attempt = 0) => {
-    try {
-      const { data } = await api.get('/users/me');
-      setProfile(data || null);
-    } catch (err) {
-      if (attempt < 2) {
-        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
-        return fetchProfile(attempt + 1);
-      }
-      setProfile(null);
-    }
-    setLoading(false);
-  };
+  }, [fetchProfile, user?.id]);
 
   const reloadProfile = async () => {
     if (user) {

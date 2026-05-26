@@ -20,35 +20,22 @@ const FALLBACK_CAMP_CONFIG = {
 };
 
 const FALLBACK_GLTIFE_SECTIONS = [
-  { id: 'choir', label: 'Choir', color: '#f4e7b0' },
-  { id: 'section3', label: 'Section 3', color: '#f7d7c7' },
-  { id: 'setman', label: 'Setman / VVIP / CEC', color: '#f69a62' },
-  { id: 'smrs', label: 'SMRS / VIPS / Ministers', color: '#d8f060' },
-  { id: 'section2', label: 'Section 2', color: '#8e90f3' },
-  { id: 'section1', label: 'Section 1', color: '#e78ad2' },
-  { id: 'extensionCenter', label: 'Extension Center', color: '#c1ada0' },
-  { id: 'extensionSide', label: 'Extension Side', color: '#9990d8' },
-  { id: 'extensionMain', label: 'Extension Main', color: '#f4668d' },
-  { id: 'extensionLower', label: 'Extension Lower', color: '#ff7a43' },
-  { id: 'altar', label: 'Altar', closed: true, color: '#f7c44b' },
+  { id: 'choir', label: 'Choir', color: '#b56df0' },
+  { id: 'smrs', label: 'SMRS VIP Minister', color: '#f58bf2' },
+  { id: 'setman', label: 'Set Man CEC', color: '#ff6868' },
+  { id: 'assPastor', label: 'Ass Pastor', color: '#68a9ef' },
 ];
 
 const FALLBACK_GLTIFE_CONFIG = {
   choir: { rows: 8, cols: 6 },
-  section3: { rows: 8, cols: 5 },
-  setman: { rows: 6, cols: 6 },
   smrs: { rows: 5, cols: 6 },
-  section2: { rows: 8, cols: 12 },
-  section1: { rows: 10, cols: 14 },
-  extensionCenter: { rows: 8, cols: 8 },
-  extensionSide: { rows: 8, cols: 3 },
-  extensionMain: { rows: 10, cols: 14 },
-  extensionLower: { rows: 8, cols: 14 },
+  setman: { rows: 6, cols: 6 },
+  assPastor: { rows: 6, cols: 6 },
 };
 
 const AUDITORIUM_IMAGE_FALLBACKS = {
   [GLT_CAMP_AUDITORIUM_SLUG]: '/glt-camp-auditorium.jpeg',
-  [GLTIFE_AUDITORIUM_SLUG]: '/gltife-auditorium.jpeg',
+  [GLTIFE_AUDITORIUM_SLUG]: '/gltife-auditorium.png',
 };
 
 const AUDITORIUM_HOTSPOTS = {
@@ -63,22 +50,17 @@ const AUDITORIUM_HOTSPOTS = {
     { id: 'minister', left: 58.7, top: 33.8, width: 15.1, height: 27.63 },
   ],
   [GLTIFE_AUDITORIUM_SLUG]: [
-    { id: 'altar', left: 5.8, top: 4.8, width: 28.5, height: 27.5, interactive: false, showLabel: false, showMeta: false, showClosed: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05 },
-    { id: 'smrs', left: 42.4, top: 8.3, width: 13.1, height: 13.2, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.16)' },
-    { id: 'section2', left: 55.4, top: 8.1, width: 29.4, height: 13.2, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.16)' },
-    { id: 'section1', left: 44.5, top: 26.0, width: 39.2, height: 13.6, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.16)' },
-    { id: 'setman', left: 29.3, top: 31.7, width: 16.8, height: 18.1, radius: 4, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.14)' },
-    { id: 'choir', left: 8.4, top: 52.9, width: 13.7, height: 10.2, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.14)' },
-    { id: 'choir', left: 8.2, top: 68.6, width: 13.8, height: 15.8, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.14)' },
-    { id: 'section3', left: 24.2, top: 68.6, width: 13.3, height: 15.8, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.16)' },
-    { id: 'extensionCenter', left: 49.3, top: 50.8, width: 18.8, height: 13.7, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.16)' },
-    { id: 'extensionSide', left: 73.4, top: 50.9, width: 7.2, height: 14.3, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.16)' },
-    { id: 'extensionMain', left: 45.8, top: 71.5, width: 38.0, height: 14.8, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.16)' },
-    { id: 'extensionLower', left: 45.9, top: 87.9, width: 38.0, height: 12.8, radius: 8, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.05, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.16)' },
+    { id: 'smrs', left: 33.01, top: 24.88, width: 11.0, height: 6.33, radius: 0, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.16, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.22)' },
+    { id: 'setman', left: 20.19, top: 32.11, width: 9.55, height: 6.76, clipPath: 'polygon(73% 0, 100% 27%, 27% 100%, 0 73%)', showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.16, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.22)' },
+    { id: 'assPastor', left: 23.82, top: 34.63, width: 14.51, height: 10.3, clipPath: 'polygon(47% 0, 100% 52%, 53% 100%, 0 47%)', showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.16, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.22)' },
+    { id: 'choir', left: 9.43, top: 41.43, width: 9.92, height: 5.3, radius: 0, showLabel: false, showMeta: false, backgroundAlpha: 0, borderAlpha: 0, activeBackgroundAlpha: 0.16, activeShadow: '0 0 0 2px rgba(214, 187, 117, 0.22)' },
   ],
 };
 
 export function getAuditoriumSections(auditorium) {
+  if (auditorium?.slug === GLTIFE_AUDITORIUM_SLUG) {
+    return FALLBACK_GLTIFE_SECTIONS;
+  }
   if (Array.isArray(auditorium?.sections) && auditorium.sections.length) {
     return auditorium.sections;
   }
@@ -100,6 +82,9 @@ export function getSectionById(auditorium, sectionId) {
 }
 
 export function getDefaultConfig(auditorium) {
+  if (auditorium?.slug === GLTIFE_AUDITORIUM_SLUG) {
+    return FALLBACK_GLTIFE_CONFIG;
+  }
   const config = auditorium?.default_seating_config;
   if (config && Object.keys(config).length) {
     return config;

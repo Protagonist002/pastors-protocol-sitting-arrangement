@@ -9,6 +9,7 @@ import { Loader } from './components/UI';
 const AuthPage = lazy(() => import('./pages/AuthPage').then((module) => ({ default: module.AuthPage })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
 const Conference = lazy(() => import('./pages/Conference').then((module) => ({ default: module.Conference })));
+const ControlCenter = lazy(() => import('./pages/ControlCenter').then((module) => ({ default: module.ControlCenter })));
 const Session = lazy(() => import('./pages/Session').then((module) => ({ default: module.Session })));
 const DignitaryDirectory = lazy(() => import('./pages/DignitaryDirectory').then((module) => ({ default: module.DignitaryDirectory })));
 const UserManagement = lazy(() => import('./pages/UserManagement').then((module) => ({ default: module.UserManagement })));
@@ -52,6 +53,7 @@ export default function App() {
                 <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="/dignitaries" element={<AdminRoute><DignitaryDirectory /></AdminRoute>} />
+                <Route path="/conference/:confId/control-center" element={<AdminRoute><ControlCenter /></AdminRoute>} />
                 <Route path="/conference/:confId" element={<ProtectedRoute><Conference /></ProtectedRoute>} />
                 <Route path="/session/:sessionId" element={<ProtectedRoute><Session /></ProtectedRoute>} />
                 <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />

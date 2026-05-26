@@ -1,16 +1,14 @@
 Traceback (most recent call last):
   File "C:\Users\wolas\Documents\Dev\glt\pastors-protocol-sitting-arrangement\backend\test_supabase.py", line 5, in <module>
-    create_client('http://localhost:8000', '123')
-    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\wolas\Documents\Dev\glt\pastors-protocol-sitting-arrangement\backend\.venv\Lib\site-packages\supabase\_sync\client.py", line 295, in create_client
+  File "C:\Users\wolas\Documents\Dev\Hobby\glt\pastors-protocol-sitting-arrangement\backend\.venv\Lib\site-packages\supabase\_sync\client.py", line 295, in create_client
     return SyncClient.create(
            ~~~~~~~~~~~~~~~~~^
         supabase_url=supabase_url, supabase_key=supabase_key, options=options
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-  File "C:\Users\wolas\Documents\Dev\glt\pastors-protocol-sitting-arrangement\backend\.venv\Lib\site-packages\supabase\_sync\client.py", line 97, in create
+  File "C:\Users\wolas\Documents\Dev\Hobby\glt\pastors-protocol-sitting-arrangement\backend\.venv\Lib\site-packages\supabase\_sync\client.py", line 97, in create
     client = cls(supabase_url, supabase_key, options)
-  File "C:\Users\wolas\Documents\Dev\glt\pastors-protocol-sitting-arrangement\backend\.venv\Lib\site-packages\supabase\_sync\client.py", line 58, in __init__
+  File "C:\Users\wolas\Documents\Dev\Hobby\glt\pastors-protocol-sitting-arrangement\backend\.venv\Lib\site-packages\supabase\_sync\client.py", line 58, in __init__
     raise SupabaseException("Invalid API key")
 supabase._sync.client.SupabaseException: Invalid API key

@@ -127,11 +127,21 @@ VALUES
 (
     'gltife-auditorium',
     'GLTIFE Auditorium',
-    'Image-based auditorium placeholder. Sections will be configured later.',
+    'GLT Ife auditorium seating map.',
     'image',
-    '/gltife-auditorium.jpeg',
-    '[]'::jsonb,
-    '{}'::jsonb
+    '/gltife-auditorium.png',
+    '[
+      {"id":"choir","label":"Choir","color":"#b56df0"},
+      {"id":"smrs","label":"SMRS VIP Minister","color":"#f58bf2"},
+      {"id":"setman","label":"Set Man CEC","color":"#ff6868"},
+      {"id":"assPastor","label":"Ass Pastor","color":"#68a9ef"}
+    ]'::jsonb,
+    '{
+      "choir": {"rows": 8, "cols": 6},
+      "smrs": {"rows": 5, "cols": 6},
+      "setman": {"rows": 6, "cols": 6},
+      "assPastor": {"rows": 6, "cols": 6}
+    }'::jsonb
 )
 ON CONFLICT (slug) DO UPDATE SET
     name = EXCLUDED.name,

@@ -40,7 +40,8 @@ export function useConferences() {
         return data;
       } catch (error) {
         if (Object.prototype.hasOwnProperty.call(newConf, 'time') && errorMatchesMissingField(error, 'conferences', 'time')) {
-          const { time, ...fallbackPayload } = newConf;
+          const fallbackPayload = { ...newConf };
+          delete fallbackPayload.time;
           const { data } = await api.post('/conferences/', fallbackPayload);
           return data;
         }
@@ -59,7 +60,8 @@ export function useConferences() {
         return result;
       } catch (error) {
         if (Object.prototype.hasOwnProperty.call(data, 'time') && errorMatchesMissingField(error, 'conferences', 'time')) {
-          const { time, ...fallbackPayload } = data;
+          const fallbackPayload = { ...data };
+          delete fallbackPayload.time;
           const { data: result } = await api.patch(`/conferences/${id}`, fallbackPayload);
           return result;
         }

@@ -22,7 +22,7 @@ function getRoleLabel(role) {
   const labels = {
     admin: 'Administrator',
     editor: 'Editor',
-    protocol: 'Protocol Officer',
+    protocol: 'protocol',
   };
   return labels[role] || 'Not available';
 }
@@ -113,7 +113,7 @@ export function ProfilePage() {
   const assignmentCount = profileQuery.data?.conference_assignments?.length || 0;
   const pageTitle = isOwnProfile ? 'My Profile' : `${profileQuery.data?.full_name || 'User'} Profile`;
   const avatarInitials = getInitials(profileQuery.data?.full_name || user?.email, 'P');
-  const conferences = conferencesQuery.data || [];
+  const conferences = useMemo(() => conferencesQuery.data || [], [conferencesQuery.data]);
   const headerBackTo = isOwnProfile ? '/' : '/users';
   const headerBackLabel = isOwnProfile ? 'Dashboard' : 'Manage Access';
   const appRoleLabel = getRoleLabel(profileQuery.data?.role);

@@ -1,3 +1,4 @@
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { FormField, Loader, Modal, ModalHeader, RoleTag, Toast } from './UI';
 
@@ -10,10 +11,10 @@ describe('UI components', () => {
 
   it('renders role labels for known roles and fallback for unknown roles', () => {
     const { rerender } = render(<RoleTag role="admin" />);
-    expect(screen.getByText('Administrator')).toBeInTheDocument();
+    expect(screen.getByText('Admin')).toBeInTheDocument();
 
     rerender(<RoleTag role="protocol" />);
-    expect(screen.getByText('Protocol Officer')).toBeInTheDocument();
+    expect(screen.getByText('protocol')).toBeInTheDocument();
 
     rerender(<RoleTag role="something-else" />);
     expect(screen.getByText('Loading Role')).toBeInTheDocument();

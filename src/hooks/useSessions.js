@@ -44,7 +44,8 @@ export function useSessions(confId) {
         return data;
       } catch (error) {
         if (Object.prototype.hasOwnProperty.call(newSess, 'time') && errorMatchesMissingField(error, 'sessions', 'time')) {
-          const { time, ...fallbackPayload } = newSess;
+          const fallbackPayload = { ...newSess };
+          delete fallbackPayload.time;
           const { data } = await api.post(`/conferences/${confId}/sessions`, fallbackPayload);
           return data;
         }
@@ -64,7 +65,8 @@ export function useSessions(confId) {
         return result;
       } catch (error) {
         if (Object.prototype.hasOwnProperty.call(data, 'time') && errorMatchesMissingField(error, 'sessions', 'time')) {
-          const { time, ...fallbackPayload } = data;
+          const fallbackPayload = { ...data };
+          delete fallbackPayload.time;
           const { data: result } = await api.patch(`/sessions/${id}`, fallbackPayload);
           return result;
         }

@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import {
   GLTIFE_AUDITORIUM_SLUG,
   auditoriumSupportsSections,
@@ -48,9 +49,10 @@ describe('constants helpers', () => {
   it('returns default config and image/hotspot fallbacks for known auditoriums', () => {
     const auditorium = { slug: GLTIFE_AUDITORIUM_SLUG };
 
-    expect(getDefaultConfig(auditorium)).toHaveProperty('section1');
-    expect(getAuditoriumImageUrl(auditorium)).toBe('/gltife-auditorium.jpeg');
-    expect(getAuditoriumHotspots(auditorium).length).toBeGreaterThan(0);
+    expect(getDefaultConfig(auditorium)).toHaveProperty('assPastor');
+    expect(getOpenSections(auditorium).map((section) => section.id)).toEqual(['choir', 'smrs', 'setman', 'assPastor']);
+    expect(getAuditoriumImageUrl(auditorium)).toBe('/gltife-auditorium.png');
+    expect(getAuditoriumHotspots(auditorium)).toHaveLength(4);
   });
 
   it('exposes all arrival statuses with matching color lookup', () => {

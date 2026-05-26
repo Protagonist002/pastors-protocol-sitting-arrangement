@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Activity, Plus } from 'lucide-react';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../components/auth-context';
@@ -214,6 +214,14 @@ export function Conference() {
               <span className="page-chip">{sessions.length} sessions</span>
             </div>
           </div>
+          {isAdmin && (
+            <div className="page-header-actions">
+              <button className="btn btn-gold btn-sm" onClick={() => navigate(`/conference/${confId}/control-center`)}>
+                <Activity size={15} />
+                Control Center
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="tab-bar">

@@ -83,6 +83,7 @@ export const VenueMap = memo(function VenueMap({ auditorium, cfg, attendees, act
                   borderRadius: hotspot.radius ? `${hotspot.radius}px` : undefined,
                   borderColor: isActive ? '#d6bb75' : withAlpha(section.color, borderAlpha),
                   background: isClosed ? 'rgba(255, 255, 255, 0.08)' : withAlpha(section.color, backgroundAlpha),
+                  clipPath: hotspot.clipPath,
                   boxShadow: isActive && hotspot.activeShadow ? hotspot.activeShadow : undefined,
                 }}
                 onClick={() => {
