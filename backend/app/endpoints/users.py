@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 from ..auth import get_current_user, invalidate_profile_cache, require_admin
 from ..db import get_supabase
 from ..postgrest_utils import is_missing_relation_error, is_missing_schema_field_error
-from ..schemas import ProfileUpdate, RoleUpdate
+from ..schemas import ProfileUpdate, RegisterUserCreate, RoleUpdate
 
 router = APIRouter()
 PROFILE_IMAGE_BUCKET = "profile-images"
@@ -34,6 +34,92 @@ def _clean_optional_text(value: Any) -> Any:
         value = value.strip()
         return value or None
     return value
+
+
+def _normalize_registration_payload(payload: RegisterUserCreate) -> Dict[str, str]:
+    email = payload.email.strip().lower()
+    password = payload.password
+    full_name = payload.full_name.strip()
+    extension = payload.extension.strip()
+
+    if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+        raise HTTPException(status_code=400, detail="Please enter a valid email address.")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+    if not full_name:
+        raise HTTPException(status_code=400, detail="Full name is required.")
+    if not extension:
+        raise HTTPException(status_code=400, detail="Extension is required.")
+
+    return {
+        "email": email,
+        "password": password,
+        "full_name": full_name,
+        "extension": extension,
+    }
+
+
+def _upsert_protocol_profile(supabase: Client, user_id: str, full_name: str, extension: str) -> Dict[str, Any]:
+    payload = {
+        "id": user_id,
+        "full_name": full_name,
+        "role": "protocol",
+        "extension": extension,
+    }
+    existing = supabase.table("profiles").select("*").eq("id", user_id).execute()
+    if existing.data:
+        res = (
+            supabase.table("profiles")
+            .update(
+                {
+                    "full_name": full_name,
+                    "extension": extension,
+                }
+            )
+            .eq("id", user_id)
+            .execute()
+        )
+    else:
+        res = supabase.table("profiles").insert(payload).execute()
+
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Failed to create profile")
+    invalidate_profile_cache(user_id)
+    return res.data[0]
+
+
+def _create_auth_user(supabase: Client, payload: Dict[str, str]):
+    if supabase is None:
+        raise HTTPException(status_code=503, detail="Backend Supabase client is not configured.")
+
+    auth_client = getattr(supabase, "auth", None)
+    admin_client = getattr(auth_client, "admin", None)
+    create_user = getattr(admin_client, "create_user", None)
+    if not callable(create_user):
+        raise HTTPException(status_code=503, detail="Backend user registration is not available.")
+
+    try:
+        response = create_user(
+            {
+                "email": payload["email"],
+                "password": payload["password"],
+                "email_confirm": True,
+                "user_metadata": {
+                    "full_name": payload["full_name"],
+                    "extension": payload["extension"],
+                },
+            }
+        )
+    except Exception as exc:
+        message = str(exc)
+        if "already" in message.lower() or "registered" in message.lower():
+            raise HTTPException(status_code=400, detail="An account with this email already exists.") from exc
+        raise HTTPException(status_code=400, detail=f"Registration failed: {message}") from exc
+
+    created_user = getattr(response, "user", None) or response
+    if not getattr(created_user, "id", None):
+        raise HTTPException(status_code=500, detail="Registration failed before a user account was created.")
+    return created_user
 
 
 def _slugify_filename(value: str) -> str:
@@ -245,6 +331,33 @@ async def _upload_profile_photo(supabase: Client, target_user_id: str, request: 
 
     picture_url = supabase.storage.from_(PROFILE_IMAGE_BUCKET).get_public_url(storage_path)
     return {"picture_url": picture_url, "storage_path": storage_path}
+
+
+@router.post("/register", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
+def register_protocol_user(
+    registration: RegisterUserCreate,
+    supabase: Client = Depends(get_supabase),
+):
+    payload = _normalize_registration_payload(registration)
+    created_user = _create_auth_user(supabase, payload)
+
+    try:
+        profile = _upsert_protocol_profile(
+            supabase,
+            created_user.id,
+            payload["full_name"],
+            payload["extension"],
+        )
+    except Exception:
+        _delete_auth_user_if_supported(supabase, created_user.id)
+        raise
+
+    return {
+        "id": created_user.id,
+        "email": payload["email"],
+        "profile": profile,
+        "message": "Registration successful. Please sign in.",
+    }
 
 
 @router.get("/me", response_model=Dict[str, Any])

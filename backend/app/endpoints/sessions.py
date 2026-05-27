@@ -7,6 +7,7 @@ from ..auth import get_current_user, require_admin, require_editor_or_admin
 from ..db import get_supabase
 from ..postgrest_utils import is_missing_schema_field_error, raise_postgrest_http_exception, strip_missing_field
 from ..schemas import SessionCreate, SessionUpdate
+from ..time_utils import utc_now_iso
 
 nested_router = APIRouter()
 direct_router = APIRouter()
@@ -99,7 +100,7 @@ def update_session(
     for key in ("name", "description"):
         if key in data:
             data[key] = _clean_optional_text(data[key])
-    data["updated_at"] = "now()"
+    data["updated_at"] = utc_now_iso()
     try:
         res = supabase.table("sessions").update(data).eq("id", session_id).execute()
     except APIError as exc:
@@ -132,7 +133,7 @@ def update_seating_config(
 ):
     res = (
         supabase.table("sessions")
-        .update({"seating_config": config, "updated_at": "now()"})
+        .update({"seating_config": config, "updated_at": utc_now_iso()})
         .eq("id", session_id)
         .execute()
     )
@@ -160,7 +161,7 @@ def clone_arrangement(
     if source_config:
         (
             supabase.table("sessions")
-            .update({"seating_config": source_config, "updated_at": "now()"})
+            .update({"seating_config": source_config, "updated_at": utc_now_iso()})
             .eq("id", target_session_id)
             .execute()
         )

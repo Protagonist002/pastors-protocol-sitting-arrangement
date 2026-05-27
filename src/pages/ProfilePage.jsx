@@ -101,11 +101,7 @@ export function ProfilePage() {
       const formData = new FormData();
       formData.append('file', file);
       const path = isOwnProfile ? '/users/me/upload-photo' : `/users/${userId}/upload-photo`;
-      const { data } = await api.post(path, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const { data } = await api.post(path, formData);
       return data;
     },
   });

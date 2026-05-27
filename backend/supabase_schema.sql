@@ -80,7 +80,12 @@ CREATE TABLE IF NOT EXISTS public.conferences (
 );
 
 ALTER TABLE public.conferences
-    ADD COLUMN IF NOT EXISTS auditorium_id UUID REFERENCES public.auditoriums(id);
+    ADD COLUMN IF NOT EXISTS time TIME,
+    ADD COLUMN IF NOT EXISTS venue TEXT,
+    ADD COLUMN IF NOT EXISTS description TEXT,
+    ADD COLUMN IF NOT EXISTS auditorium_id UUID REFERENCES public.auditoriums(id),
+    ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES public.profiles(id),
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 ALTER TABLE public.conferences ENABLE ROW LEVEL SECURITY;
 
@@ -483,6 +488,19 @@ END $$;
 --   2. Name: "dignitary-photos"
 --   3. Check "Public bucket" (for public read access)
 --   4. Add policy: allow INSERT for authenticated users
+
+-- Current backend upload buckets. This supersedes the older dashboard-only note
+-- above; Supabase storage buckets can be upserted from the SQL editor.
+-- The API also creates these lazily when it is running with a service-role key.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES
+    ('profile-images', 'profile-images', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp']),
+    ('dignitary-images', 'dignitary-images', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
+ON CONFLICT (id) DO UPDATE
+SET
+    public = EXCLUDED.public,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
 
 -- =============================================================================
 -- CLEANUP SQL (only if you need to reset and re-run)

@@ -43,11 +43,7 @@ export function useDirectoryDignitaries(enabled = true) {
     mutationFn: async (file) => {
       const formData = new FormData();
       formData.append('file', file);
-      const { data } = await api.post('/directory-dignitaries/upload-photo', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const { data } = await api.post('/directory-dignitaries/upload-photo', formData);
       return data;
     },
   });

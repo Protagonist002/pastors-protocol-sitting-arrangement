@@ -3,6 +3,13 @@ from pydantic import BaseModel
 from typing import Literal, Optional
 
 
+class RegisterUserCreate(BaseModel):
+    email: str
+    password: str
+    full_name: str
+    extension: str
+
+
 class RoleUpdate(BaseModel):
     role: Literal["admin", "editor", "protocol"]
 

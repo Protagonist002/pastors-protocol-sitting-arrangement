@@ -29,11 +29,11 @@ def _load_env_file(env_path: Path) -> None:
 _load_env_file(_env_path)
 
 supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY")
+supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 try:
     if not supabase_url or not supabase_key:
-        raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set.")
+        raise ValueError("SUPABASE_URL and SUPABASE_KEY or SUPABASE_SERVICE_ROLE_KEY must be set.")
     supabase: Client = create_client(supabase_url, supabase_key)
 except Exception as e:
     import traceback

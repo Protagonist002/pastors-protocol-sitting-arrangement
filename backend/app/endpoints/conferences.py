@@ -14,6 +14,7 @@ from ..postgrest_utils import (
     strip_missing_field,
 )
 from ..schemas import ConferenceCreate, ConferenceProtocolAssignmentUpdate, ConferenceUpdate
+from ..time_utils import utc_now_iso
 
 router = APIRouter()
 CONFERENCE_SELECT = "*, auditorium:auditoriums(*)"
@@ -312,7 +313,7 @@ def update_conference(
     for key in ("name", "venue", "description", "auditorium_id"):
         if key in data:
             data[key] = _clean_optional_text(data[key])
-    data["updated_at"] = "now()"
+    data["updated_at"] = utc_now_iso()
     try:
         res = supabase.table("conferences").update(data).eq("id", conf_id).execute()
     except APIError as exc:
@@ -455,7 +456,7 @@ def upsert_conference_protocol_assignment(
         "user_id": user_id,
         "conference_role": conference_role,
         "assigned_conference_dignitary_id": assigned_dignitary_id,
-        "updated_at": "now()",
+        "updated_at": utc_now_iso(),
     }
     if existing_assignment:
         try:

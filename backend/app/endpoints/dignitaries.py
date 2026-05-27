@@ -18,6 +18,7 @@ from ..schemas import (
     DirectoryDignitaryCreate,
     DirectoryDignitaryUpdate,
 )
+from ..time_utils import utc_now_iso
 
 nested_router = APIRouter()
 conference_router = APIRouter()
@@ -198,7 +199,7 @@ def _record_first_arrival_if_needed(
         supabase.table("conference_dignitaries")
         .update(
             {
-                "first_arrival_at": "now()",
+                "first_arrival_at": utc_now_iso(),
                 "first_arrival_session_id": session_id,
             }
         )
@@ -369,7 +370,7 @@ def update_directory_dignitary(
     user=Depends(require_editor_or_admin),
 ):
     data = dignitary.model_dump(exclude_unset=True)
-    data["updated_at"] = "now()"
+    data["updated_at"] = utc_now_iso()
     res = (
         supabase.table("dignitary_directory")
         .update(data)
@@ -480,7 +481,7 @@ def update_dignitary(
             detail="Only admins or the assigned protocol officer can change dignitary status.",
         )
 
-    data["updated_at"] = "now()"
+    data["updated_at"] = utc_now_iso()
     res = supabase.table("dignitaries").update(data).eq("id", dignitary_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Dignitary not found")
@@ -511,7 +512,7 @@ def update_dignitary_status(
 
     res = (
         supabase.table("dignitaries")
-        .update({"status": status_update.status, "updated_at": "now()"})
+        .update({"status": status_update.status, "updated_at": utc_now_iso()})
         .eq("id", dignitary_id)
         .execute()
     )

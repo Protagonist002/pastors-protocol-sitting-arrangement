@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FormField } from '../components/UI';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { api } from '../services/apiClient';
 
 export function AuthPage() {
   const navigate = useNavigate();
@@ -14,6 +15,13 @@ export function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [err, setErr] = useState('');
+
+  const getErrorMessage = (error) => {
+    const detail = error?.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) return detail.map((item) => item.msg || JSON.stringify(item)).join(', ');
+    return error?.message || 'Request failed. Please try again.';
+  };
 
   const submit = async () => {
     if (!email || !pass) {
@@ -34,23 +42,18 @@ export function AuthPage() {
         if (error) throw error;
         if (data?.session) navigate('/');
       } else {
-        const { error } = await supabase.auth.signUp({
+        await api.post('/users/register', {
           email,
           password: pass,
-          options: {
-            data: {
-              full_name: name,
-              extension,
-            },
-          },
+          full_name: name,
+          extension,
         });
-        if (error) throw error;
         setMode('login');
         setPass('');
         setErr('Registration successful. Please sign in.');
       }
     } catch (error) {
-      setErr(error.message);
+      setErr(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
