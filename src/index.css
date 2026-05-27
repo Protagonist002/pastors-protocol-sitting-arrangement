@@ -3374,6 +3374,10 @@ img {
   min-width: 0;
 }
 
+.control-panel.is-collapsed {
+  padding-bottom: 18px;
+}
+
 .control-panel-head {
   display: flex;
   justify-content: space-between;
@@ -3382,8 +3386,53 @@ img {
   margin-bottom: 18px;
 }
 
+.control-panel.is-collapsed .control-panel-head {
+  margin-bottom: 0;
+}
+
 .control-panel-head--search {
   align-items: center;
+}
+
+.control-panel-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.control-panel-tools--search {
+  justify-content: flex-end;
+  flex: 1;
+  min-width: min(420px, 100%);
+}
+
+.control-collapse-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color .18s ease, color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.control-collapse-btn:hover {
+  border-color: var(--line-gold);
+  color: var(--warning-strong);
+  background: rgba(201, 168, 76, 0.08);
+}
+
+.control-collapse-btn svg {
+  transition: transform .18s ease;
+}
+
+.control-collapse-btn.is-collapsed svg {
+  transform: rotate(-90deg);
 }
 
 .control-count {
@@ -3790,6 +3839,13 @@ img {
   .control-feed-top {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .control-panel-tools,
+  .control-panel-tools--search {
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
   }
 
   .control-search {

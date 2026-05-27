@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Armchair,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   Radio,
   RefreshCw,
@@ -82,9 +83,25 @@ function FeedIcon({ type }) {
   return <Icon size={15} />;
 }
 
+function PanelCollapseButton({ collapsed, label, onToggle }) {
+  return (
+    <button
+      type="button"
+      className={`control-collapse-btn ${collapsed ? 'is-collapsed' : ''}`}
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${label}`}
+      title={`${collapsed ? 'Expand' : 'Collapse'} ${label}`}
+    >
+      <ChevronDown size={16} />
+    </button>
+  );
+}
+
 export function ControlCenter() {
   const { confId } = useParams();
   const [trackerQuery, setTrackerQuery] = useState('');
+  const [collapsedPanels, setCollapsedPanels] = useState({});
   const deferredTrackerQuery = useDeferredValue(trackerQuery.trim().toLowerCase());
   const { data, model, isLoading, isFetching, error, refresh } = useControlCenter(confId);
 
@@ -109,6 +126,10 @@ export function ControlCenter() {
   const conference = data?.conference;
   const summary = model?.summary || {};
   const totalAttention = model?.alerts?.length || 0;
+  const isCollapsed = (panelId) => Boolean(collapsedPanels[panelId]);
+  const togglePanel = (panelId) => {
+    setCollapsedPanels((current) => ({ ...current, [panelId]: !current[panelId] }));
+  };
 
   return (
     <div>
@@ -146,193 +167,214 @@ export function ControlCenter() {
         </div>
 
         <div className="control-main-grid">
-          <section className="card control-panel control-panel--attention">
+          <section className={`card control-panel control-panel--attention ${isCollapsed('attention') ? 'is-collapsed' : ''}`}>
             <div className="control-panel-head">
               <div>
                 <h2 className="section-card-title">Attention Needed</h2>
                 <p className="page-subtitle">Conflicts, gaps, late movement, and coverage risks.</p>
               </div>
-              <span className="control-count">{totalAttention}</span>
+              <div className="control-panel-tools">
+                <span className="control-count">{totalAttention}</span>
+                <PanelCollapseButton collapsed={isCollapsed('attention')} label="Attention Needed" onToggle={() => togglePanel('attention')} />
+              </div>
             </div>
 
-            {!model?.alerts?.length ? (
-              <div className="control-empty">
-                <CheckCircle2 size={22} />
-                <span>No active operational alerts.</span>
-              </div>
-            ) : (
-              <div className="control-alert-list">
-                {model.alerts.slice(0, 14).map((alert) => (
-                  <div key={alert.id} className={`control-alert control-alert--${alert.severity}`}>
-                    <AlertPill severity={alert.severity} />
-                    <div>
-                      <div className="control-alert-title">{alert.title}</div>
-                      <div className="control-alert-detail">{alert.detail}</div>
+            {!isCollapsed('attention') && (
+              !model?.alerts?.length ? (
+                <div className="control-empty">
+                  <CheckCircle2 size={22} />
+                  <span>No active operational alerts.</span>
+                </div>
+              ) : (
+                <div className="control-alert-list">
+                  {model.alerts.slice(0, 14).map((alert) => (
+                    <div key={alert.id} className={`control-alert control-alert--${alert.severity}`}>
+                      <AlertPill severity={alert.severity} />
+                      <div>
+                        <div className="control-alert-title">{alert.title}</div>
+                        <div className="control-alert-detail">{alert.detail}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )
             )}
           </section>
 
-          <section className="card control-panel control-panel--feed">
+          <section className={`card control-panel control-panel--feed ${isCollapsed('activity') ? 'is-collapsed' : ''}`}>
             <div className="control-panel-head">
               <div>
                 <h2 className="section-card-title">Live Activity</h2>
                 <p className="page-subtitle">Latest movement across sessions, roster, and assignments.</p>
               </div>
+              <PanelCollapseButton collapsed={isCollapsed('activity')} label="Live Activity" onToggle={() => togglePanel('activity')} />
             </div>
 
-            {!model?.feed?.length ? (
-              <div className="control-empty">
-                <Clock3 size={22} />
-                <span>No activity recorded yet.</span>
-              </div>
-            ) : (
-              <div className="control-feed-list">
-                {model.feed.slice(0, 18).map((event) => (
-                  <div key={event.id} className="control-feed-item">
-                    <div className="control-feed-icon"><FeedIcon type={event.type} /></div>
-                    <div className="control-feed-body">
-                      <div className="control-feed-top">
-                        <span>{event.label}</span>
-                        <time>{formatDateTime(event.at)}</time>
+            {!isCollapsed('activity') && (
+              !model?.feed?.length ? (
+                <div className="control-empty">
+                  <Clock3 size={22} />
+                  <span>No activity recorded yet.</span>
+                </div>
+              ) : (
+                <div className="control-feed-list">
+                  {model.feed.slice(0, 18).map((event) => (
+                    <div key={event.id} className="control-feed-item">
+                      <div className="control-feed-icon"><FeedIcon type={event.type} /></div>
+                      <div className="control-feed-body">
+                        <div className="control-feed-top">
+                          <span>{event.label}</span>
+                          <time>{formatDateTime(event.at)}</time>
+                        </div>
+                        <div className="control-feed-detail">{event.detail}</div>
                       </div>
-                      <div className="control-feed-detail">{event.detail}</div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )
             )}
           </section>
         </div>
 
         <div className="control-secondary-grid">
-          <section className="card control-panel">
+          <section className={`card control-panel ${isCollapsed('protocol') ? 'is-collapsed' : ''}`}>
             <div className="control-panel-head">
               <div>
                 <h2 className="section-card-title">Protocol Team</h2>
                 <p className="page-subtitle">Who is assigned, what they own, and the last visible movement.</p>
               </div>
+              <PanelCollapseButton collapsed={isCollapsed('protocol')} label="Protocol Team" onToggle={() => togglePanel('protocol')} />
             </div>
 
-            <div className="control-protocol-list">
-              {model?.protocolRows?.length ? model.protocolRows.map((row) => (
-                <div key={row.user.id} className="control-protocol-row">
-                  <div className="control-avatar">
-                    {row.user.picture_url ? <img src={row.user.picture_url} alt="" /> : getInitials(row.user.full_name, '?')}
-                  </div>
-                  <div className="control-protocol-main">
-                    <div className="control-protocol-name">{row.user.full_name || 'Unnamed protocol officer'}</div>
-                    <div className="control-protocol-meta">
-                      {row.assignment?.conference_role || 'No conference role'}
+            {!isCollapsed('protocol') && (
+              <div className="control-protocol-list">
+                {model?.protocolRows?.length ? model.protocolRows.map((row) => (
+                  <div key={row.user.id} className="control-protocol-row">
+                    <div className="control-avatar">
+                      {row.user.picture_url ? <img src={row.user.picture_url} alt="" /> : getInitials(row.user.full_name, '?')}
                     </div>
-                    <div className="control-protocol-assigned">
-                      {row.assignedDignitary?.name || 'No dignitary assigned'}
+                    <div className="control-protocol-main">
+                      <div className="control-protocol-name">{row.user.full_name || 'Unnamed protocol officer'}</div>
+                      <div className="control-protocol-meta">
+                        {row.assignment?.conference_role || 'No conference role'}
+                      </div>
+                      <div className="control-protocol-assigned">
+                        {row.assignedDignitary?.name || 'No dignitary assigned'}
+                      </div>
+                    </div>
+                    <div className="control-protocol-side">
+                      <span className={`badge ${row.currentStatus}`}>{statusLabels[row.currentStatus] || 'Pending'}</span>
+                      <span>{formatClock(row.lastUpdate)}</span>
                     </div>
                   </div>
-                  <div className="control-protocol-side">
-                    <span className={`badge ${row.currentStatus}`}>{statusLabels[row.currentStatus] || 'Pending'}</span>
-                    <span>{formatClock(row.lastUpdate)}</span>
+                )) : (
+                  <div className="control-empty">
+                    <Users size={22} />
+                    <span>No protocol officers found.</span>
                   </div>
-                </div>
-              )) : (
-                <div className="control-empty">
-                  <Users size={22} />
-                  <span>No protocol officers found.</span>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </section>
 
-          <section className="card control-panel">
+          <section className={`card control-panel ${isCollapsed('seating') ? 'is-collapsed' : ''}`}>
             <div className="control-panel-head">
               <div>
                 <h2 className="section-card-title">Session Seating</h2>
                 <p className="page-subtitle">Capacity and section occupancy across all sessions.</p>
               </div>
+              <PanelCollapseButton collapsed={isCollapsed('seating')} label="Session Seating" onToggle={() => togglePanel('seating')} />
             </div>
 
-            <div className="control-session-list">
-              {model?.sessionRows?.length ? model.sessionRows.map((sessionRow) => (
-                <div key={sessionRow.session.id} className="control-session-card">
-                  <div className="control-session-top">
-                    <div>
-                      <div className="control-session-title">{sessionRow.session.name}</div>
-                      <div className="control-session-meta">{sessionRow.assignedSeats}/{sessionRow.total} seated positions assigned</div>
-                    </div>
-                    <span className="control-session-unassigned">{sessionRow.unassignedSeats} unassigned</span>
-                  </div>
-                  <div className="control-status-strip">
-                    {Object.entries(sessionRow.statusCounts).map(([status, count]) => (
-                      <span key={status} style={{ color: statusColor[status] }}>{statusLabels[status]}: {count}</span>
-                    ))}
-                  </div>
-                  <div className="control-section-stack">
-                    {sessionRow.sections.map((section) => (
-                      <div key={section.id} className="control-section-row">
-                        <div className="control-section-label">
-                          <span className="control-section-dot" style={{ background: section.color }} />
-                          <span>{section.label}</span>
-                        </div>
-                        <div className="control-section-meter">
-                          <ProgressBar value={section.occupancy} color={section.color} />
-                          <span>{section.assigned}/{section.totalSeats}</span>
-                        </div>
+            {!isCollapsed('seating') && (
+              <div className="control-session-list">
+                {model?.sessionRows?.length ? model.sessionRows.map((sessionRow) => (
+                  <div key={sessionRow.session.id} className="control-session-card">
+                    <div className="control-session-top">
+                      <div>
+                        <div className="control-session-title">{sessionRow.session.name}</div>
+                        <div className="control-session-meta">{sessionRow.assignedSeats}/{sessionRow.total} seated positions assigned</div>
                       </div>
-                    ))}
+                      <span className="control-session-unassigned">{sessionRow.unassignedSeats} unassigned</span>
+                    </div>
+                    <div className="control-status-strip">
+                      {Object.entries(sessionRow.statusCounts).map(([status, count]) => (
+                        <span key={status} style={{ color: statusColor[status] }}>{statusLabels[status]}: {count}</span>
+                      ))}
+                    </div>
+                    <div className="control-section-stack">
+                      {sessionRow.sections.map((section) => (
+                        <div key={section.id} className="control-section-row">
+                          <div className="control-section-label">
+                            <span className="control-section-dot" style={{ background: section.color }} />
+                            <span>{section.label}</span>
+                          </div>
+                          <div className="control-section-meter">
+                            <ProgressBar value={section.occupancy} color={section.color} />
+                            <span>{section.assigned}/{section.totalSeats}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )) : (
-                <div className="control-empty">
-                  <Armchair size={22} />
-                  <span>No session seating yet.</span>
-                </div>
-              )}
-            </div>
+                )) : (
+                  <div className="control-empty">
+                    <Armchair size={22} />
+                    <span>No session seating yet.</span>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         </div>
 
-        <section className="card control-panel">
+        <section className={`card control-panel ${isCollapsed('tracker') ? 'is-collapsed' : ''}`}>
           <div className="control-panel-head control-panel-head--search">
             <div>
               <h2 className="section-card-title">Dignitary Tracker</h2>
               <p className="page-subtitle">Search the roster and inspect status, officer, and session presence.</p>
             </div>
-            <div className="control-search">
-              <Search size={16} />
-              <input value={trackerQuery} onChange={(event) => setTrackerQuery(event.target.value)} placeholder="Search dignitary, title, church, protocol..." />
+            <div className="control-panel-tools control-panel-tools--search">
+              {!isCollapsed('tracker') && (
+                <div className="control-search">
+                  <Search size={16} />
+                  <input value={trackerQuery} onChange={(event) => setTrackerQuery(event.target.value)} placeholder="Search dignitary, title, church, protocol..." />
+                </div>
+              )}
+              <PanelCollapseButton collapsed={isCollapsed('tracker')} label="Dignitary Tracker" onToggle={() => togglePanel('tracker')} />
             </div>
           </div>
 
-          <div className="control-tracker-grid">
-            {trackerRows.length ? trackerRows.map((dignitary) => (
-              <div key={dignitary.rosterId} className="control-tracker-card">
-                <div className="control-tracker-top">
-                  <div className="control-avatar">
-                    {dignitary.picture_url ? <img src={dignitary.picture_url} alt="" /> : getInitials(dignitary.name, '?')}
+          {!isCollapsed('tracker') && (
+            <div className="control-tracker-grid">
+              {trackerRows.length ? trackerRows.map((dignitary) => (
+                <div key={dignitary.rosterId} className="control-tracker-card">
+                  <div className="control-tracker-top">
+                    <div className="control-avatar">
+                      {dignitary.picture_url ? <img src={dignitary.picture_url} alt="" /> : getInitials(dignitary.name, '?')}
+                    </div>
+                    <div>
+                      <div className="control-tracker-name">{dignitary.name}</div>
+                      <div className="control-tracker-title">{dignitary.title}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="control-tracker-name">{dignitary.name}</div>
-                    <div className="control-tracker-title">{dignitary.title}</div>
+                  <div className="control-tracker-meta">
+                    <span className={`badge ${dignitary.status}`}>{statusLabels[dignitary.status] || 'Pending'}</span>
+                    <span>{dignitary.assignment?.user_profile?.full_name || dignitary.assigned_protocol_name || 'No protocol officer'}</span>
+                  </div>
+                  <div className="control-tracker-foot">
+                    <span>{dignitary.sessionRows.length} session{dignitary.sessionRows.length === 1 ? '' : 's'}</span>
+                    <span>{dignitary.first_arrival_at ? `First arrival ${formatDateTime(dignitary.first_arrival_at)}` : 'No first arrival'}</span>
                   </div>
                 </div>
-                <div className="control-tracker-meta">
-                  <span className={`badge ${dignitary.status}`}>{statusLabels[dignitary.status] || 'Pending'}</span>
-                  <span>{dignitary.assignment?.user_profile?.full_name || dignitary.assigned_protocol_name || 'No protocol officer'}</span>
+              )) : (
+                <div className="control-empty control-empty--wide">
+                  <Search size={22} />
+                  <span>No dignitaries match that search.</span>
                 </div>
-                <div className="control-tracker-foot">
-                  <span>{dignitary.sessionRows.length} session{dignitary.sessionRows.length === 1 ? '' : 's'}</span>
-                  <span>{dignitary.first_arrival_at ? `First arrival ${formatDateTime(dignitary.first_arrival_at)}` : 'No first arrival'}</span>
-                </div>
-              </div>
-            )) : (
-              <div className="control-empty control-empty--wide">
-                <Search size={22} />
-                <span>No dignitaries match that search.</span>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </section>
       </div>
     </div>
