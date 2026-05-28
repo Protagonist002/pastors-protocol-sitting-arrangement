@@ -1185,6 +1185,27 @@ textarea.input {
   color: var(--text-muted);
 }
 
+.seat-ref-btn {
+  appearance: none;
+  border: 1px solid rgba(201, 168, 76, 0.38);
+  background: rgba(201, 168, 76, 0.1);
+  color: var(--accent-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.seat-ref-btn:hover,
+.seat-ref-btn:focus-visible {
+  background: rgba(201, 168, 76, 0.18);
+  border-color: rgba(201, 168, 76, 0.74);
+  transform: translateY(-1px);
+  outline: none;
+}
+
 .inline-status-select {
   min-height: 32px;
   padding: 4px 10px;
@@ -1501,6 +1522,38 @@ textarea.input {
 .seat:hover {
   transform: translateY(-2px) scale(1.08);
   box-shadow: 0 12px 18px rgba(0, 0, 0, 0.24);
+}
+
+.seat.seat--highlighted {
+  border-color: #d6bb75 !important;
+  box-shadow:
+    0 0 0 2px rgba(214, 187, 117, 0.92),
+    0 0 0 7px rgba(214, 187, 117, 0.22),
+    0 12px 24px rgba(0, 0, 0, 0.24);
+  transform: translateY(-2px) scale(1.08);
+  z-index: 2;
+  animation: seat-locate-pulse 1.3s ease-out 1;
+}
+
+@keyframes seat-locate-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(214, 187, 117, 0.95),
+      0 0 0 0 rgba(214, 187, 117, 0.28),
+      0 12px 24px rgba(0, 0, 0, 0.24);
+  }
+  55% {
+    box-shadow:
+      0 0 0 2px rgba(214, 187, 117, 0.92),
+      0 0 0 10px rgba(214, 187, 117, 0.16),
+      0 12px 24px rgba(0, 0, 0, 0.24);
+  }
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(214, 187, 117, 0.92),
+      0 0 0 7px rgba(214, 187, 117, 0.22),
+      0 12px 24px rgba(0, 0, 0, 0.24);
+  }
 }
 
 .seat-grid-hint {

@@ -1,8 +1,9 @@
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 
 import { STATUSES, getEffectiveConfig, getSectionById, statusColor } from '../lib/constants';
 
-export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, attendees, canEdit, onSeatClick }) {
+export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, attendees, canEdit, onSeatClick, highlightedSeat }) {
+  const gridScrollRef = useRef(null);
   const sec = getSectionById(auditorium, sectionId);
   const cfgMap = getEffectiveConfig(auditorium, cfg);
   const sectionConfig = cfgMap[sectionId] || { rows: 5, cols: 5 };
@@ -23,6 +24,20 @@ export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, att
   }, [attendees, sectionId]);
   const rows = useMemo(() => Array.from({ length: sectionConfig.rows }, (_, index) => index + 1), [sectionConfig.rows]);
   const cols = useMemo(() => Array.from({ length: sectionConfig.cols }, (_, index) => index + 1), [sectionConfig.cols]);
+  const activeHighlight = highlightedSeat?.section === sectionId ? highlightedSeat : null;
+
+  useEffect(() => {
+    if (!activeHighlight || !gridScrollRef.current) return undefined;
+
+    const timer = window.setTimeout(() => {
+      const target = gridScrollRef.current.querySelector(
+        `[data-seat-row="${activeHighlight.row_num}"][data-seat-col="${activeHighlight.col_num}"]`,
+      );
+      target?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [activeHighlight]);
 
   return (
     <div className="seat-grid-wrap fade-in">
@@ -40,7 +55,7 @@ export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, att
         </div>
       </div>
 
-        <div className="seat-grid-scroll">
+        <div className="seat-grid-scroll" ref={gridScrollRef}>
           <div className="seat-grid-cols">
           {cols.map((col) => (
             <div key={col} className="seat-grid-col-label">{col}</div>
@@ -52,10 +67,13 @@ export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, att
             <div className="seat-grid-row-label">{row}</div>
             {cols.map((col) => {
               const dignitary = seatAssignments[`${row}-${col}`];
+              const isHighlighted = activeHighlight?.row_num === row && activeHighlight?.col_num === col;
               return (
                 <div
                   key={col}
-                  className={`seat ${dignitary ? `occ-${dignitary.status}` : 'empty'}`}
+                  className={`seat ${dignitary ? `occ-${dignitary.status}` : 'empty'}${isHighlighted ? ' seat--highlighted' : ''}`}
+                  data-seat-row={row}
+                  data-seat-col={col}
                   onClick={() => onSeatClick(row, col, dignitary)}
                   title={dignitary ? `${dignitary.name} - ${statusLabels[dignitary.status]}` : `Seat ${row}-${col}`}
                   style={{

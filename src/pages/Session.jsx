@@ -1,4 +1,4 @@
-import { memo, useDeferredValue, useMemo, useState } from 'react';
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../components/auth-context';
@@ -214,7 +214,7 @@ function EditSessionDignitaryForm({ auditorium, init = {}, onSave, onCancel }) {
   );
 }
 
-const DignitaryList = memo(function DignitaryList({ auditorium, attendees, canEdit, canManageStatus, onView, onEdit, onDelete, onStatus }) {
+const DignitaryList = memo(function DignitaryList({ auditorium, attendees, canEdit, canManageStatus, onView, onEdit, onDelete, onStatus, onLocateSeat }) {
   const [sectionFilter, setSectionFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [q, setQ] = useState('');
@@ -291,7 +291,20 @@ const DignitaryList = memo(function DignitaryList({ auditorium, attendees, canEd
                       {section.label}
                     </span>
                   )}
-                  {dignitary.row_num && dignitary.col_num && <span className="seat-ref">R{dignitary.row_num} / S{dignitary.col_num}</span>}
+                  {dignitary.section && dignitary.row_num && dignitary.col_num && (
+                    <button
+                      type="button"
+                      className="seat-ref seat-ref-btn"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onLocateSeat(dignitary);
+                      }}
+                      title={`Show ${dignitary.name}'s seat on the seating map`}
+                    >
+                      R{dignitary.row_num} / S{dignitary.col_num}
+                    </button>
+                  )}
+                  {!dignitary.section && dignitary.row_num && dignitary.col_num && <span className="seat-ref">R{dignitary.row_num} / S{dignitary.col_num}</span>}
                 </div>
 
                 <div className="attendee-card-actions" onClick={(e) => e.stopPropagation()}>
@@ -579,6 +592,8 @@ export function Session() {
   const [editingAtn, setEditingAtn] = useState(null);
   const [viewingAtn, setViewingAtn] = useState(null);
   const [prefillLoc, setPrefillLoc] = useState(null);
+  const [locatedSeat, setLocatedSeat] = useState(null);
+  const seatGridRef = useRef(null);
 
   const queryClient = useQueryClient();
   const { data: sessionInfo, isLoading: loadingInfo } = useSessionData(sessionId);
@@ -611,6 +626,16 @@ export function Session() {
   );
   const supportsSections = auditoriumSupportsSections(auditorium);
 
+  useEffect(() => {
+    if (tab !== 'map' || !locatedSeat || activeSec !== locatedSeat.section) return undefined;
+
+    const timer = window.setTimeout(() => {
+      seatGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [activeSec, locatedSeat, tab]);
+
   if (loadingInfo || loadingAtt) return <Loader text="Loading session..." />;
   if (!sessionInfo || !sessionInfo.conf) return <div className="empty-state" style={{ marginTop: 100 }}>Session not found.</div>;
 
@@ -625,6 +650,20 @@ export function Session() {
       setPrefillLoc({ section: activeSec, row_num: rowNum, col_num: colNum });
       setShowAddModal(true);
     }
+  };
+
+  const handleLocateSeat = (dignitary) => {
+    if (!dignitary?.section || !dignitary?.row_num || !dignitary?.col_num) return;
+
+    setViewingAtn(null);
+    setTab('map');
+    setActiveSec(dignitary.section);
+    setLocatedSeat({
+      section: dignitary.section,
+      row_num: Number(dignitary.row_num),
+      col_num: Number(dignitary.col_num),
+      dignitaryId: dignitary.id,
+    });
   };
 
   return (
@@ -676,8 +715,16 @@ export function Session() {
           <>
             <VenueMap auditorium={auditorium} cfg={session.seating_config} attendees={attendees} activeSec={activeSec} onSec={(id) => setActiveSec(activeSec === id ? null : id)} />
             {supportsSections && activeSec && (
-              <div style={{ marginTop: 16 }} className="fade-in">
-                <SeatGrid auditorium={auditorium} sectionId={activeSec} cfg={session.seating_config} attendees={attendees} canEdit={isEditorOrAdmin} onSeatClick={handleSeatClick} />
+              <div ref={seatGridRef} style={{ marginTop: 16 }} className="fade-in">
+                <SeatGrid
+                  auditorium={auditorium}
+                  sectionId={activeSec}
+                  cfg={session.seating_config}
+                  attendees={attendees}
+                  canEdit={isEditorOrAdmin}
+                  onSeatClick={handleSeatClick}
+                  highlightedSeat={locatedSeat}
+                />
               </div>
             )}
           </>
@@ -693,6 +740,7 @@ export function Session() {
             onEdit={setEditingAtn}
             onDelete={(id) => deleteDignitary.mutate(id)}
             onStatus={(id, statusValue) => updateDignitaryStatus.mutate({ id, status: statusValue })}
+            onLocateSeat={handleLocateSeat}
           />
         )}
       </div>
