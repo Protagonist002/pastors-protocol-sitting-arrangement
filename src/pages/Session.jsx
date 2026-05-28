@@ -895,6 +895,7 @@ function SeatingList({ auditorium, attendees, protocolSeats, onLocateSeat, onLoc
         name: dignitary.name,
         title: dignitary.title,
         notes: dignitary.notes,
+        noteLabel: 'Seat note',
         data: dignitary,
       }));
     const seatedProtocols = protocolSeats
@@ -908,6 +909,7 @@ function SeatingList({ auditorium, attendees, protocolSeats, onLocateSeat, onLoc
         name: seat.protocol_name || seat.protocol_profile?.full_name || 'Protocol officer',
         title: seat.assigned_dignitary?.name ? `Protocol for ${seat.assigned_dignitary.name}` : 'Protocol officer',
         notes: seat.notes,
+        noteLabel: 'Protocol note',
         data: seat,
       }));
     const seated = [...seatedDignitaries, ...seatedProtocols].sort((a, b) => {
@@ -929,7 +931,7 @@ function SeatingList({ auditorium, attendees, protocolSeats, onLocateSeat, onLoc
     return (
       <div className="empty-state">
         <div className="empty-state-icon">Seats</div>
-        <p className="empty-state-text">No dignitaries have been assigned to seats yet</p>
+        <p className="empty-state-text">No seats have been assigned yet</p>
       </div>
     );
   }
@@ -959,7 +961,10 @@ function SeatingList({ auditorium, attendees, protocolSeats, onLocateSeat, onLoc
                   {occupant.title && <span className="seating-list-title">{occupant.title}</span>}
                 </span>
                 <span className={`seating-list-kind seating-list-kind--${occupant.type}`}>{occupant.type === 'protocol' ? 'Protocol' : 'Dignitary'}</span>
-                <span className="seating-list-note">{occupant.notes || 'No note'}</span>
+                <span className={`seating-list-note ${occupant.notes ? '' : 'seating-list-note--empty'}`}>
+                  <span className="seating-list-note-label">{occupant.noteLabel}</span>
+                  <span className="seating-list-note-text">{occupant.notes || 'No note added'}</span>
+                </span>
               </button>
             ))}
           </div>

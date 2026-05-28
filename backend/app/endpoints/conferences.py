@@ -56,9 +56,6 @@ def _strip_missing_conference_fields(data: Dict[str, Any], error: APIError) -> D
         retry_data.pop("start_date", None)
         retry_data.pop("end_date", None)
         stripped = True
-    if strip_missing_field(retry_data, error, "conferences", "all_protocols_can_update_status") is not None:
-        retry_data.pop("all_protocols_can_update_status", None)
-        stripped = True
     return retry_data if stripped else None
 
 

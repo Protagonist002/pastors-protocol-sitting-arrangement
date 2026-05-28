@@ -1642,17 +1642,17 @@ textarea.input {
 
 .seating-list-rows {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .seating-list-row {
   display: grid;
-  grid-template-columns: 92px minmax(180px, 1fr) 92px minmax(180px, 1.25fr);
+  grid-template-columns: 106px minmax(220px, 1fr) 104px minmax(240px, 1.35fr);
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  min-height: 56px;
-  padding: 10px 12px;
+  min-height: 72px;
+  padding: 14px 16px;
   border: 1px solid var(--line-soft);
   border-radius: 16px;
   background: rgba(2, 16, 7, 0.62);
@@ -1673,7 +1673,8 @@ textarea.input {
 .seating-list-seat {
   color: var(--gold-bright);
   font-family: 'Azeret Mono', monospace;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
+  font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -1687,6 +1688,8 @@ textarea.input {
   display: block;
   color: var(--text-main);
   font-weight: 800;
+  font-size: 1rem;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1694,29 +1697,50 @@ textarea.input {
 
 .seating-list-title {
   display: block;
-  margin-top: 2px;
-  color: var(--text-soft);
-  font-size: 0.78rem;
+  margin-top: 4px;
+  color: var(--text-main);
+  opacity: 0.78;
+  font-size: 0.86rem;
+  line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .seating-list-note {
-  color: var(--text-soft);
-  font-size: 0.78rem;
-  line-height: 1.35;
+  display: grid;
+  gap: 4px;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.seating-list-note-label {
+  color: var(--text-faint);
+  font-family: 'Azeret Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.seating-list-note-text {
+  overflow-wrap: anywhere;
+}
+
+.seating-list-note--empty .seating-list-note-text {
+  color: var(--text-faint);
 }
 
 .seating-list-kind {
   justify-self: start;
-  min-height: 24px;
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
-  padding: 0 9px;
+  padding: 0 11px;
   border-radius: 999px;
   font-family: 'Azeret Mono', monospace;
-  font-size: 0.56rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -3396,8 +3420,9 @@ img {
   }
 
   .seating-list-row {
-    grid-template-columns: 82px minmax(0, 1fr);
+    grid-template-columns: 92px minmax(0, 1fr);
     align-items: start;
+    gap: 10px 12px;
   }
 
   .seating-list-note {
@@ -3406,6 +3431,10 @@ img {
 
   .seating-list-kind {
     grid-column: 2;
+  }
+
+  .seating-list-note {
+    font-size: 0.86rem;
   }
 
   .conference-role-setting {
@@ -3543,8 +3572,9 @@ img {
 
   .seating-list-row {
     grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 10px;
     min-height: 0;
+    padding: 14px;
   }
 
   .seating-list-note {
@@ -3558,6 +3588,16 @@ img {
   .seating-list-name,
   .seating-list-title {
     white-space: normal;
+  }
+
+  .seating-list-seat,
+  .seating-list-kind {
+    justify-self: start;
+  }
+
+  .seating-list-note {
+    padding-top: 8px;
+    border-top: 1px solid var(--line-soft);
   }
 
   .switch-control {

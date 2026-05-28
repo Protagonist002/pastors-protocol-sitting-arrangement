@@ -19,6 +19,7 @@ export function UserManagement() {
   const [savingRoleId, setSavingRoleId] = useState(null);
   const [savingAssignmentId, setSavingAssignmentId] = useState(null);
   const [savingStatusScope, setSavingStatusScope] = useState(false);
+  const [draftStatusScope, setDraftStatusScope] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [draftConferenceRoles, setDraftConferenceRoles] = useState({});
   const [draftAssignedDignitaries, setDraftAssignedDignitaries] = useState({});
@@ -74,6 +75,10 @@ export function UserManagement() {
     setDraftAssignedDignitaries(nextAssignedDignitaries);
   }, [assignmentsQuery.data, selectedConferenceId]);
 
+  useEffect(() => {
+    setDraftStatusScope(Boolean(selectedConference?.all_protocols_can_update_status));
+  }, [selectedConference?.all_protocols_can_update_status, selectedConferenceId]);
+
   const updateRole = async (userId, newRole) => {
     setSavingRoleId(userId);
     setError('');
@@ -112,6 +117,8 @@ export function UserManagement() {
 
   const updateStatusScope = async (allowedForAllProtocols) => {
     if (!selectedConferenceId) return;
+    const previousValue = draftStatusScope;
+    setDraftStatusScope(allowedForAllProtocols);
     setSavingStatusScope(true);
     setError('');
     setSuccess('');
@@ -123,7 +130,8 @@ export function UserManagement() {
       });
       setSuccess('Dignitary status permission updated.');
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Failed to update status permission');
+      setDraftStatusScope(previousValue);
+      setError(err.response?.data?.detail || err.message || 'Failed to update status permission. Run backend/conference_status_permission_migration.sql if the database column is missing.');
     } finally {
       setSavingStatusScope(false);
     }
@@ -245,7 +253,7 @@ export function UserManagement() {
                           <div className="conference-role-setting-copy">
                             <div className="profile-summary-title">Dignitary Status Permission</div>
                             <div className="profile-summary-meta">
-                              {selectedConference.all_protocols_can_update_status
+                              {draftStatusScope
                                 ? 'All protocol officers can update dignitary arrival status for this conference.'
                                 : 'Only admins and the protocol officer assigned to a dignitary can update that dignitary status.'}
                             </div>
@@ -253,7 +261,7 @@ export function UserManagement() {
                           <label className="switch-control">
                             <input
                               type="checkbox"
-                              checked={Boolean(selectedConference.all_protocols_can_update_status)}
+                              checked={draftStatusScope}
                               onChange={(event) => updateStatusScope(event.target.checked)}
                               disabled={savingStatusScope}
                             />
