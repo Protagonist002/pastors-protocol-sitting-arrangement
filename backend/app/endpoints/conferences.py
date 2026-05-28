@@ -31,6 +31,14 @@ def _raise_conference_schema_error(error: Exception) -> None:
     ]
     if missing_fields:
         fields = ", ".join(missing_fields)
+        if missing_fields == ["all_protocols_can_update_status"]:
+            raise_postgrest_http_exception(
+                error,
+                (
+                    "Your Supabase conferences table is missing field: all_protocols_can_update_status. "
+                    "Run backend/access_and_protocol_seating_migration.sql in Supabase SQL Editor."
+                ),
+            )
         raise_postgrest_http_exception(
             error,
             (

@@ -10,6 +10,15 @@ import { useConferenceDignitaries } from '../hooks/useDignitaryDirectory';
 import { getInitials } from '../lib/formatters';
 import { api } from '../services/apiClient';
 
+function getStatusScopeErrorMessage(err) {
+  const detail = err.response?.data?.detail;
+  const message = typeof detail === 'string' ? detail : JSON.stringify(detail || err.message || '');
+  if (message.toLowerCase().includes('all_protocols_can_update_status')) {
+    return 'Database update needed: run backend/access_and_protocol_seating_migration.sql in Supabase SQL Editor, then try the toggle again.';
+  }
+  return message || 'Failed to update status permission';
+}
+
 export function UserManagement() {
   const { profile: currentUser } = useAuth();
   const navigate = useNavigate();
@@ -131,7 +140,7 @@ export function UserManagement() {
       setSuccess('Dignitary status permission updated.');
     } catch (err) {
       setDraftStatusScope(previousValue);
-      setError(err.response?.data?.detail || err.message || 'Failed to update status permission. Run backend/conference_status_permission_migration.sql if the database column is missing.');
+      setError(getStatusScopeErrorMessage(err));
     } finally {
       setSavingStatusScope(false);
     }
