@@ -28,6 +28,8 @@ class ConferenceProtocolAssignmentUpdate(BaseModel):
 class ConferenceCreate(BaseModel):
     name: str
     date: Optional[date_type] = None
+    start_date: Optional[date_type] = None
+    end_date: Optional[date_type] = None
     time: Optional[time_type] = None
     venue: Optional[str] = None
     description: Optional[str] = None
@@ -37,6 +39,8 @@ class ConferenceCreate(BaseModel):
 class ConferenceUpdate(BaseModel):
     name: Optional[str] = None
     date: Optional[date_type] = None
+    start_date: Optional[date_type] = None
+    end_date: Optional[date_type] = None
     time: Optional[time_type] = None
     venue: Optional[str] = None
     description: Optional[str] = None

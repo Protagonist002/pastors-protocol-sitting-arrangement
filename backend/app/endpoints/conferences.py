@@ -23,7 +23,7 @@ CONFERENCE_SELECT = "*, auditorium:auditoriums(*)"
 def _raise_conference_schema_error(error: Exception) -> None:
     missing_fields = [
         field_name
-        for field_name in ("time", "auditorium_id", "created_by", "updated_at")
+        for field_name in ("time", "start_date", "end_date", "auditorium_id", "created_by", "updated_at")
         if is_missing_schema_field_error(error, "conferences", field_name)
     ]
     if missing_fields:
@@ -40,6 +40,22 @@ def _raise_conference_schema_error(error: Exception) -> None:
     raise_postgrest_http_exception(error)
 
 
+def _strip_missing_conference_fields(data: Dict[str, Any], error: APIError) -> Dict[str, Any] | None:
+    retry_data = dict(data)
+    stripped = False
+    if strip_missing_field(retry_data, error, "conferences", "time") is not None:
+        retry_data.pop("time", None)
+        stripped = True
+    if (
+        is_missing_schema_field_error(error, "conferences", "start_date")
+        or is_missing_schema_field_error(error, "conferences", "end_date")
+    ):
+        retry_data.pop("start_date", None)
+        retry_data.pop("end_date", None)
+        stripped = True
+    return retry_data if stripped else None
+
+
 def _get_conference_or_404(supabase: Client, conf_id: str) -> Dict[str, Any]:
     res = supabase.table("conferences").select(CONFERENCE_SELECT).eq("id", conf_id).execute()
     if not res.data:
@@ -52,6 +68,16 @@ def _clean_optional_text(value: Any) -> Any:
         value = value.strip()
         return value or None
     return value
+
+
+def _normalize_conference_dates(data: Dict[str, Any]) -> Dict[str, Any]:
+    if data.get("end_date") and not (data.get("start_date") or data.get("date")):
+        raise HTTPException(status_code=400, detail="Conference start date is required when an end date is set")
+    if data.get("start_date") and data.get("end_date") and data["end_date"] < data["start_date"]:
+        raise HTTPException(status_code=400, detail="Conference end date cannot be before the start date")
+    if data.get("start_date") and not data.get("date"):
+        data["date"] = data["start_date"]
+    return data
 
 
 def _fetch_profile_map(supabase: Client, user_ids: List[str]) -> Dict[str, Dict[str, Any]]:
@@ -167,7 +193,15 @@ def _format_doc_datetime(value: Any) -> str:
 
 def _build_arrivals_doc(conference: Dict[str, Any], rows: List[Dict[str, Any]]) -> str:
     conference_name = escape(conference.get("name") or "Conference")
-    conference_date = escape(str(conference.get("date") or "Date not set"))
+    conference_date = escape(
+        str(
+            conference.get("start_date")
+            or conference.get("date")
+            or "Date not set"
+        )
+    )
+    if conference.get("end_date") and conference.get("end_date") != (conference.get("start_date") or conference.get("date")):
+        conference_date = f"{conference_date} - {escape(str(conference.get('end_date')))}"
     conference_venue = escape(conference.get("venue") or "Venue not set")
     generated_rows = []
 
@@ -290,11 +324,12 @@ def create_conference(
     for key in ("name", "venue", "description", "auditorium_id"):
         if key in data:
             data[key] = _clean_optional_text(data[key])
+    data = _normalize_conference_dates(data)
     data["created_by"] = user.id
     try:
         res = supabase.table("conferences").insert(data).execute()
     except APIError as exc:
-        retry_data = strip_missing_field(data, exc, "conferences", "time")
+        retry_data = _strip_missing_conference_fields(data, exc)
         if retry_data is not None:
             res = supabase.table("conferences").insert(retry_data).execute()
         else:
@@ -313,11 +348,12 @@ def update_conference(
     for key in ("name", "venue", "description", "auditorium_id"):
         if key in data:
             data[key] = _clean_optional_text(data[key])
+    data = _normalize_conference_dates(data)
     data["updated_at"] = utc_now_iso()
     try:
         res = supabase.table("conferences").update(data).eq("id", conf_id).execute()
     except APIError as exc:
-        retry_data = strip_missing_field(data, exc, "conferences", "time")
+        retry_data = _strip_missing_conference_fields(data, exc)
         if retry_data is not None:
             res = supabase.table("conferences").update(retry_data).eq("id", conf_id).execute()
         else:

@@ -10,6 +10,30 @@ function errorMatchesMissingField(error, relationName, fieldName) {
   return haystack.includes(relationName.toLowerCase()) && haystack.includes(fieldName.toLowerCase());
 }
 
+function buildConferenceFallbackPayload(payload, error) {
+  const fallbackPayload = { ...payload };
+  let changed = false;
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'time') && errorMatchesMissingField(error, 'conferences', 'time')) {
+    delete fallbackPayload.time;
+    changed = true;
+  }
+
+  if (
+    (Object.prototype.hasOwnProperty.call(payload, 'start_date') || Object.prototype.hasOwnProperty.call(payload, 'end_date'))
+    && (
+      errorMatchesMissingField(error, 'conferences', 'start_date')
+      || errorMatchesMissingField(error, 'conferences', 'end_date')
+    )
+  ) {
+    delete fallbackPayload.start_date;
+    delete fallbackPayload.end_date;
+    changed = true;
+  }
+
+  return changed ? fallbackPayload : null;
+}
+
 export function useConferences() {
   const queryClient = useQueryClient();
 
@@ -39,9 +63,8 @@ export function useConferences() {
         const { data } = await api.post('/conferences/', newConf);
         return data;
       } catch (error) {
-        if (Object.prototype.hasOwnProperty.call(newConf, 'time') && errorMatchesMissingField(error, 'conferences', 'time')) {
-          const fallbackPayload = { ...newConf };
-          delete fallbackPayload.time;
+        const fallbackPayload = buildConferenceFallbackPayload(newConf, error);
+        if (fallbackPayload) {
           const { data } = await api.post('/conferences/', fallbackPayload);
           return data;
         }
@@ -59,9 +82,8 @@ export function useConferences() {
         const { data: result } = await api.patch(`/conferences/${id}`, data);
         return result;
       } catch (error) {
-        if (Object.prototype.hasOwnProperty.call(data, 'time') && errorMatchesMissingField(error, 'conferences', 'time')) {
-          const fallbackPayload = { ...data };
-          delete fallbackPayload.time;
+        const fallbackPayload = buildConferenceFallbackPayload(data, error);
+        if (fallbackPayload) {
           const { data: result } = await api.patch(`/conferences/${id}`, fallbackPayload);
           return result;
         }

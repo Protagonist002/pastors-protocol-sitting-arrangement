@@ -70,6 +70,8 @@ CREATE TABLE IF NOT EXISTS public.conferences (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT NOT NULL,
     date        DATE,
+    start_date  DATE,
+    end_date    DATE,
     time        TIME,
     venue       TEXT,
     description TEXT,
@@ -80,6 +82,8 @@ CREATE TABLE IF NOT EXISTS public.conferences (
 );
 
 ALTER TABLE public.conferences
+    ADD COLUMN IF NOT EXISTS start_date DATE,
+    ADD COLUMN IF NOT EXISTS end_date DATE,
     ADD COLUMN IF NOT EXISTS time TIME,
     ADD COLUMN IF NOT EXISTS venue TEXT,
     ADD COLUMN IF NOT EXISTS description TEXT,

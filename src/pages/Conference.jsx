@@ -7,7 +7,7 @@ import { Loader, Modal, ModalHeader, FormField } from '../components/UI';
 import { useConference, useConferenceProtocolAssignments } from '../hooks/useConferences';
 import { useSessions } from '../hooks/useSessions';
 import { useConferenceDignitaries, useDirectoryDignitaries } from '../hooks/useDignitaryDirectory';
-import { formatDisplayDate, getInitials } from '../lib/formatters';
+import { formatConferenceDateRange, formatDisplayDate, getInitials } from '../lib/formatters';
 
 function toDateInputValue(value) {
   if (!value || typeof value !== 'string') return '';
@@ -204,7 +204,7 @@ export function Conference() {
           <div>
             <h1 className="page-title">{conf.name}</h1>
             <p className="page-subtitle">
-              {formatDisplayDate(conf.date, 'Date not set')}
+              {formatConferenceDateRange(conf, 'Date not set')}
               {conf.time ? ` at ${formatTimeLabel(conf.time)}` : ''}
               {conf.venue ? ` - ${conf.venue}` : ''}
             </p>

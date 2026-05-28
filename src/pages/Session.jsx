@@ -11,7 +11,7 @@ import { useDignitaries } from '../hooks/useAttendees';
 import { useConferenceDignitaries } from '../hooks/useDignitaryDirectory';
 import { useConferences } from '../hooks/useConferences';
 import { useSessions, useSessionData } from '../hooks/useSessions';
-import { formatDisplayDate, getInitials } from '../lib/formatters';
+import { formatConferenceDateRange, formatDisplayDate, getInitials } from '../lib/formatters';
 import { auditoriumSupportsSections, getDefaultConfig, getOpenSections, getSectionById, STATUSES, statusColor } from '../lib/constants';
 
 function formatTimeLabel(value) {
@@ -393,7 +393,7 @@ function ImportArrangementModal({ targetSessionId, onClose, onSuccess }) {
             <option value="">Select conference</option>
             {conferences.map((conference) => (
               <option key={conference.id} value={conference.id}>
-                {conference.name}{conference.date ? ` (${formatDisplayDate(conference.date)})` : ''}
+                {conference.name}{formatConferenceDateRange(conference) ? ` (${formatConferenceDateRange(conference)})` : ''}
               </option>
             ))}
           </select>

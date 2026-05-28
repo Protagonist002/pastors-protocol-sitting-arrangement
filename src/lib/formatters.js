@@ -35,6 +35,20 @@ export function formatDisplayDate(value, fallback = '') {
   return formatter ? formatter.format(date) : formatFallbackDate(date);
 }
 
+export function formatConferenceDateRange(conference, fallback = '') {
+  const start = conference?.start_date || conference?.date;
+  const end = conference?.end_date;
+  const startLabel = formatDisplayDate(start, fallback);
+
+  if (!end || end === start) return startLabel;
+
+  const endLabel = formatDisplayDate(end, '');
+  if (!endLabel) return startLabel;
+  if (!startLabel || startLabel === fallback) return endLabel;
+
+  return `${startLabel} - ${endLabel}`;
+}
+
 export function getInitials(value, fallback = '?') {
   const cleaned = String(value || '').trim();
   if (!cleaned) return fallback;

@@ -6,7 +6,7 @@ import { Header } from '../components/Header';
 import { useAuth } from '../components/auth-context';
 import { FormField, Loader } from '../components/UI';
 import { useConferences } from '../hooks/useConferences';
-import { getInitials } from '../lib/formatters';
+import { formatConferenceDateRange, getInitials } from '../lib/formatters';
 import { api } from '../services/apiClient';
 
 function DetailCell({ label, value }) {
@@ -361,7 +361,7 @@ export function ProfilePage() {
                       <div>
                         <h3 className="profile-summary-title">{selectedConference.name}</h3>
                         <p className="profile-summary-meta">
-                          {[selectedConference.date, selectedConference.venue].filter(Boolean).join(' - ') || 'Conference details not set'}
+                          {[formatConferenceDateRange(selectedConference), selectedConference.venue].filter(Boolean).join(' - ') || 'Conference details not set'}
                         </p>
                       </div>
                       <span className="page-chip">{selectedAssignment.conference_role || 'No conference role assigned'}</span>

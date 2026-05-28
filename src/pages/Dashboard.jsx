@@ -5,7 +5,7 @@ import { Loader, Modal, ModalHeader, FormField } from '../components/UI';
 import { Header } from '../components/Header';
 import { useConferences } from '../hooks/useConferences';
 import { useAuditoriums } from '../hooks/useAuditoriums';
-import { formatDisplayDate } from '../lib/formatters';
+import { formatConferenceDateRange } from '../lib/formatters';
 
 function toDateInputValue(value) {
   if (!value || typeof value !== 'string') return '';
@@ -32,19 +32,30 @@ function handleTimeSelection(input, onSelect) {
 }
 
 function ConfForm({ auditoriums = [], isEdit, loadingAuditoriums = false, onSave, onCancel }) {
-  const [f, setF] = useState({ name:'', date:'', time:'', venue:'', description:'', auditorium_id:'' });
+  const [f, setF] = useState({ name:'', start_date:'', end_date:'', time:'', venue:'', description:'', auditorium_id:'' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const s = (k, v) => setF(x => ({ ...x, [k]:v }));
 
   const handleSave = async () => {
     if (!f.name) return;
+    if (f.end_date && !f.start_date) {
+      setError('Start date is required when an end date is set.');
+      return;
+    }
+    if (f.start_date && f.end_date && f.end_date < f.start_date) {
+      setError('End date cannot be before start date.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       const cleaned = Object.fromEntries(
         Object.entries(f).filter(([, value]) => value !== '')
       );
+      if (cleaned.start_date && !cleaned.date) {
+        cleaned.date = cleaned.start_date;
+      }
       await onSave(cleaned);
     } catch (err) {
       const detail = err?.response?.data?.detail;
@@ -63,7 +74,10 @@ function ConfForm({ auditoriums = [], isEdit, loadingAuditoriums = false, onSave
       {error && <p style={{ color: '#ef4444', marginBottom: 12, fontSize: 13, padding: 8, background: '#ef444422', borderRadius: 6 }}>{error}</p>}
       <FormField label="Conference Name *"><input className="input" placeholder="General Council 2025" value={f.name} onChange={e=>s('name',e.target.value)}/></FormField>
       <div className="form-grid-2">
-        <FormField label="Date"><input className="input" type="date" value={toDateInputValue(f.date)} onChange={e=>s('date',e.target.value)}/></FormField>
+        <FormField label="Start Date"><input className="input" type="date" value={toDateInputValue(f.start_date)} onChange={e=>s('start_date',e.target.value)}/></FormField>
+        <FormField label="End Date"><input className="input" type="date" min={toDateInputValue(f.start_date)} value={toDateInputValue(f.end_date)} onChange={e=>s('end_date',e.target.value)}/></FormField>
+      </div>
+      <div className="form-grid-2">
         <FormField label="Time"><input className="input" type="time" step="60" value={toTimeInputValue(f.time)} onChange={(e) => handleTimeSelection(e.currentTarget, (value) => s('time', value))}/></FormField>
       </div>
       <FormField label="Venue"><input className="input" placeholder="National Auditorium, Accra" value={f.venue} onChange={e=>s('venue',e.target.value)}/></FormField>
@@ -134,7 +148,7 @@ export function Dashboard() {
                         <div className="dashboard-card-kicker">Conference</div>
                         <h3 className="card-title dashboard-card-title">{c.name}</h3>
                         <p className="card-meta dashboard-card-meta">
-                          {formatDisplayDate(c.date, '—')}
+                          {formatConferenceDateRange(c, '—')}
                           {c.time ? ` at ${formatTimeLabel(c.time)}` : ''}
                           {c.venue ? ` • ${c.venue}` : ''}
                         </p>
