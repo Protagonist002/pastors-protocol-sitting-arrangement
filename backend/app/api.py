@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoints import auditoriums, conferences, sessions, dignitaries, users
+from .endpoints import auditoriums, conferences, sessions, dignitaries, protocol_seats, users
 
 api_router = APIRouter()
 
@@ -34,9 +34,11 @@ api_router.include_router(dignitaries.directory_router, prefix="/directory-digni
 # GET  /api/sessions/{session_id}/dignitaries  — list dignitaries for a session
 # POST /api/sessions/{session_id}/dignitaries  — create dignitary in a session
 api_router.include_router(dignitaries.nested_router, prefix="/sessions", tags=["dignitaries"])
+api_router.include_router(protocol_seats.nested_router, prefix="/sessions", tags=["protocol-seats"])
 # GET    /api/dignitaries/{id}         — get a dignitary
 # PATCH  /api/dignitaries/{id}         — update a dignitary
 # PATCH  /api/dignitaries/{id}/status  — update dignitary status
 # DELETE /api/dignitaries/conference-dignitaries/{id} — remove dignitary from conference roster
 # DELETE /api/dignitaries/{id}         — delete a dignitary
 api_router.include_router(dignitaries.direct_router, prefix="/dignitaries", tags=["dignitaries"])
+api_router.include_router(protocol_seats.direct_router, prefix="/protocol-seats", tags=["protocol-seats"])

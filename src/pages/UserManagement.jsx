@@ -18,13 +18,14 @@ export function UserManagement() {
   const [selectedConferenceId, setSelectedConferenceId] = useState('');
   const [savingRoleId, setSavingRoleId] = useState(null);
   const [savingAssignmentId, setSavingAssignmentId] = useState(null);
+  const [savingStatusScope, setSavingStatusScope] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [draftConferenceRoles, setDraftConferenceRoles] = useState({});
   const [draftAssignedDignitaries, setDraftAssignedDignitaries] = useState({});
   const [appRolesOpen, setAppRolesOpen] = useState(true);
   const [conferenceRolesOpen, setConferenceRolesOpen] = useState(true);
 
-  const { conferencesQuery } = useConferences();
+  const { conferencesQuery, updateConference } = useConferences();
   const { data: selectedConference } = useConference(selectedConferenceId);
   const { assignmentsQuery, updateAssignment } = useConferenceProtocolAssignments(selectedConferenceId);
   const { conferenceDignitariesQuery } = useConferenceDignitaries(selectedConferenceId);
@@ -106,6 +107,25 @@ export function UserManagement() {
       setError(err.response?.data?.detail || err.message || 'Failed to update assignment');
     } finally {
       setSavingAssignmentId(null);
+    }
+  };
+
+  const updateStatusScope = async (allowedForAllProtocols) => {
+    if (!selectedConferenceId) return;
+    setSavingStatusScope(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await updateConference.mutateAsync({
+        id: selectedConferenceId,
+        data: { all_protocols_can_update_status: allowedForAllProtocols },
+      });
+      setSuccess('Dignitary status permission updated.');
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Failed to update status permission');
+    } finally {
+      setSavingStatusScope(false);
     }
   };
 
@@ -218,6 +238,31 @@ export function UserManagement() {
                         <p className="page-description" style={{ marginBottom: 18 }}>
                           {conferenceSummary}
                         </p>
+                      )}
+
+                      {selectedConferenceId && selectedConference && (
+                        <div className="conference-role-setting">
+                          <div className="conference-role-setting-copy">
+                            <div className="profile-summary-title">Dignitary Status Permission</div>
+                            <div className="profile-summary-meta">
+                              {selectedConference.all_protocols_can_update_status
+                                ? 'All protocol officers can update dignitary arrival status for this conference.'
+                                : 'Only admins and the protocol officer assigned to a dignitary can update that dignitary status.'}
+                            </div>
+                          </div>
+                          <label className="switch-control">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(selectedConference.all_protocols_can_update_status)}
+                              onChange={(event) => updateStatusScope(event.target.checked)}
+                              disabled={savingStatusScope}
+                            />
+                            <span className="switch-control-track" aria-hidden="true">
+                              <span className="switch-control-thumb" />
+                            </span>
+                            <span className="switch-control-label">All protocols</span>
+                          </label>
+                        </div>
                       )}
 
                       {!selectedConferenceId && conferences.length > 0 && (

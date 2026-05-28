@@ -97,7 +97,7 @@ function AddConferenceDignitaryModal({ available, adding, loading, onAdd, onClos
     <>
       <ModalHeader title="Add Dignitaries To Conference" onClose={onClose} />
       <div className="modal-body">
-        <div className="filter-bar" style={{ marginBottom: 16 }}>
+        <div className="filter-bar conference-picker-filter" style={{ marginBottom: 16 }}>
           <input className="input" placeholder="Search..." value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
           {onOpenDirectory && <button className="btn btn-outline btn-sm" onClick={onOpenDirectory}>Directory</button>}
         </div>

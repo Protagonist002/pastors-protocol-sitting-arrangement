@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 
 import { STATUSES, getEffectiveConfig, getSectionById, statusColor } from '../lib/constants';
 
-export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, attendees, canEdit, onSeatClick, highlightedSeat }) {
+export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, attendees, protocolSeats = [], canEdit, onSeatClick, highlightedSeat }) {
   const gridScrollRef = useRef(null);
   const sec = getSectionById(auditorium, sectionId);
   const cfgMap = getEffectiveConfig(auditorium, cfg);
@@ -18,10 +18,22 @@ export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, att
     const assignments = {};
     attendees.forEach((dignitary) => {
       if (dignitary.section !== sectionId || !dignitary.row_num || !dignitary.col_num) return;
-      assignments[`${dignitary.row_num}-${dignitary.col_num}`] = dignitary;
+      assignments[`${dignitary.row_num}-${dignitary.col_num}`] = {
+        type: 'dignitary',
+        data: dignitary,
+      };
+    });
+    protocolSeats.forEach((protocolSeat) => {
+      if (protocolSeat.section !== sectionId || !protocolSeat.row_num || !protocolSeat.col_num) return;
+      const key = `${protocolSeat.row_num}-${protocolSeat.col_num}`;
+      if (assignments[key]) return;
+      assignments[key] = {
+        type: 'protocol',
+        data: protocolSeat,
+      };
     });
     return assignments;
-  }, [attendees, sectionId]);
+  }, [attendees, protocolSeats, sectionId]);
   const rows = useMemo(() => Array.from({ length: sectionConfig.rows }, (_, index) => index + 1), [sectionConfig.rows]);
   const cols = useMemo(() => Array.from({ length: sectionConfig.cols }, (_, index) => index + 1), [sectionConfig.cols]);
   const activeHighlight = highlightedSeat?.section === sectionId ? highlightedSeat : null;
@@ -52,6 +64,10 @@ export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, att
               {statusOption.label}
             </div>
           ))}
+          <div className="seat-grid-legend-item">
+            <div className="seat-grid-legend-dot seat-grid-legend-dot--protocol" />
+            Protocol
+          </div>
         </div>
       </div>
 
@@ -66,24 +82,38 @@ export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, att
           <div key={row} className="seat-grid-row">
             <div className="seat-grid-row-label">{row}</div>
             {cols.map((col) => {
-              const dignitary = seatAssignments[`${row}-${col}`];
+              const occupant = seatAssignments[`${row}-${col}`];
+              const dignitary = occupant?.type === 'dignitary' ? occupant.data : null;
+              const protocolSeat = occupant?.type === 'protocol' ? occupant.data : null;
+              const protocolName = protocolSeat?.protocol_name || protocolSeat?.protocol_profile?.full_name || 'Protocol officer';
+              const protocolInitials = protocolName.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase();
               const isHighlighted = activeHighlight?.row_num === row && activeHighlight?.col_num === col;
               return (
                 <div
                   key={col}
-                  className={`seat ${dignitary ? `occ-${dignitary.status}` : 'empty'}${isHighlighted ? ' seat--highlighted' : ''}`}
+                  className={`seat ${dignitary ? `occ-${dignitary.status}` : protocolSeat ? 'occ-protocol' : 'empty'}${isHighlighted ? ' seat--highlighted' : ''}`}
                   data-seat-row={row}
                   data-seat-col={col}
-                  onClick={() => onSeatClick(row, col, dignitary)}
-                  title={dignitary ? `${dignitary.name} - ${statusLabels[dignitary.status]}` : `Seat ${row}-${col}`}
+                  onClick={() => onSeatClick(row, col, occupant)}
+                  title={
+                    dignitary
+                      ? `${dignitary.name} - ${statusLabels[dignitary.status]}`
+                      : protocolSeat
+                        ? `${protocolName} - Protocol${protocolSeat.assigned_dignitary?.name ? ` for ${protocolSeat.assigned_dignitary.name}` : ''}`
+                        : `Seat ${row}-${col}`
+                  }
                   style={{
-                    background: dignitary ? `${statusColor[dignitary.status]}1a` : 'var(--surface-soft)',
-                    borderColor: dignitary ? `${statusColor[dignitary.status]}55` : 'var(--line-strong)',
+                    background: dignitary ? `${statusColor[dignitary.status]}1a` : protocolSeat ? 'rgba(14, 165, 233, 0.15)' : 'var(--surface-soft)',
+                    borderColor: dignitary ? `${statusColor[dignitary.status]}55` : protocolSeat ? 'rgba(14, 165, 233, 0.6)' : 'var(--line-strong)',
                   }}
                 >
                   {dignitary ? (
                     <span style={{ color: statusColor[dignitary.status], fontSize: 8, fontWeight: 700 }}>
                       {dignitary.name?.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()}
+                    </span>
+                  ) : protocolSeat ? (
+                    <span style={{ color: '#38bdf8', fontSize: 8, fontWeight: 800 }}>
+                      {protocolInitials}
                     </span>
                   ) : canEdit ? <span style={{ color: 'var(--text-faint)', fontSize: 16, lineHeight: 1 }}>+</span> : null}
                 </div>
@@ -93,7 +123,7 @@ export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, att
         ))}
       </div>
       <p className="seat-grid-hint">
-        {canEdit ? 'Click an occupied seat to view the profile, or an empty seat to assign a dignitary.' : 'Click a seat to view the dignitary profile.'}
+        {canEdit ? 'Click an occupied seat to view details, or an empty seat to assign a dignitary or protocol officer.' : 'Click a seat to view details.'}
       </p>
     </div>
   );

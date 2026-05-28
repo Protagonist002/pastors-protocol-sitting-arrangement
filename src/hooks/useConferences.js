@@ -31,6 +31,14 @@ function buildConferenceFallbackPayload(payload, error) {
     changed = true;
   }
 
+  if (
+    Object.prototype.hasOwnProperty.call(payload, 'all_protocols_can_update_status')
+    && errorMatchesMissingField(error, 'conferences', 'all_protocols_can_update_status')
+  ) {
+    delete fallbackPayload.all_protocols_can_update_status;
+    changed = true;
+  }
+
   return changed ? fallbackPayload : null;
 }
 

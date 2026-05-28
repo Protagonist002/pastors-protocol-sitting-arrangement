@@ -35,6 +35,7 @@ ALLOWED_IMAGE_TYPES = {
     "image/webp": ".webp",
 }
 ARRIVAL_STATUSES = {"arrived"}
+SEATING_ASSIGNMENT_FIELDS = {"section", "row_num", "col_num", "notes"}
 
 
 def _fetch_profile_map(supabase: Client, user_ids: List[str]) -> Dict[str, Dict[str, Any]]:
@@ -208,21 +209,41 @@ def _record_first_arrival_if_needed(
     )
 
 
-def _can_manage_status(supabase: Client, user_id: str, dignitary: Dict[str, Any]) -> bool:
-    profile = get_profile_record(supabase, user_id)
-    if profile.get("role") == "admin":
-        return True
-
-    conference_dignitary_id = dignitary.get("conference_dignitary_id")
-    if not conference_dignitary_id:
+def _get_conference_status_scope(supabase: Client, conference_id: str) -> bool:
+    try:
+        res = (
+            supabase.table("conferences")
+            .select("id,all_protocols_can_update_status")
+            .eq("id", conference_id)
+            .execute()
+        )
+    except APIError as exc:
+        if is_missing_schema_field_error(exc, "conferences", "all_protocols_can_update_status"):
+            return False
+        raise
+    if not res.data:
         return False
+    return bool(res.data[0].get("all_protocols_can_update_status"))
 
+
+def _get_session_conference_id(supabase: Client, dignitary: Dict[str, Any]) -> str | None:
     session = _get_session_record(dignitary["session_id"], supabase)
+    return session.get("conference_id")
+
+
+def _is_assigned_protocol_for_roster(
+    supabase: Client,
+    user_id: str,
+    conference_id: str | None,
+    conference_dignitary_id: str | None,
+) -> bool:
+    if not conference_id or not conference_dignitary_id:
+        return False
     try:
         assignment = (
             supabase.table("conference_protocol_assignments")
             .select("id")
-            .eq("conference_id", session["conference_id"])
+            .eq("conference_id", conference_id)
             .eq("user_id", user_id)
             .eq("assigned_conference_dignitary_id", conference_dignitary_id)
             .execute()
@@ -232,6 +253,92 @@ def _can_manage_status(supabase: Client, user_id: str, dignitary: Dict[str, Any]
         if is_missing_relation_error(exc, "conference_protocol_assignments"):
             return False
         raise
+
+
+def _can_manage_status(supabase: Client, user_id: str, dignitary: Dict[str, Any]) -> bool:
+    profile = get_profile_record(supabase, user_id)
+    if profile.get("role") == "admin":
+        return True
+
+    conference_dignitary_id = dignitary.get("conference_dignitary_id")
+    if not conference_dignitary_id:
+        return False
+
+    conference_id = _get_session_conference_id(supabase, dignitary)
+    if not conference_id:
+        return False
+    if profile.get("role") == "protocol" and _get_conference_status_scope(supabase, conference_id):
+        return True
+    return _is_assigned_protocol_for_roster(supabase, user_id, conference_id, conference_dignitary_id)
+
+
+def _can_manage_seating(supabase: Client, user_id: str, dignitary: Dict[str, Any]) -> bool:
+    profile = get_profile_record(supabase, user_id)
+    if profile.get("role") in ("admin", "editor"):
+        return True
+
+    conference_id = _get_session_conference_id(supabase, dignitary)
+    return _is_assigned_protocol_for_roster(
+        supabase,
+        user_id,
+        conference_id,
+        dignitary.get("conference_dignitary_id"),
+    )
+
+
+def _can_create_session_dignitary(supabase: Client, user_id: str, session: Dict[str, Any], conference_dignitary_id: str) -> bool:
+    profile = get_profile_record(supabase, user_id)
+    if profile.get("role") in ("admin", "editor"):
+        return True
+    return _is_assigned_protocol_for_roster(
+        supabase,
+        user_id,
+        session.get("conference_id"),
+        conference_dignitary_id,
+    )
+
+
+def _check_session_seat_available(
+    supabase: Client,
+    session_id: str,
+    section: str | None,
+    row_num: int | None,
+    col_num: int | None,
+    ignore_dignitary_id: str | None = None,
+) -> None:
+    if not section or not row_num or not col_num:
+        return
+
+    dignitary_query = (
+        supabase.table("dignitaries")
+        .select("id")
+        .eq("session_id", session_id)
+        .eq("section", section)
+        .eq("row_num", row_num)
+        .eq("col_num", col_num)
+    )
+    if ignore_dignitary_id:
+        dignitary_query = dignitary_query.neq("id", ignore_dignitary_id)
+    dignitary_res = dignitary_query.execute()
+    if dignitary_res.data:
+        raise HTTPException(status_code=400, detail="That seat is already assigned to a dignitary.")
+
+    try:
+        protocol_res = (
+            supabase.table("protocol_seats")
+            .select("id")
+            .eq("session_id", session_id)
+            .eq("section", section)
+            .eq("row_num", row_num)
+            .eq("col_num", col_num)
+            .execute()
+        )
+    except Exception as exc:
+        if is_missing_relation_error(exc, "protocol_seats"):
+            return
+        raise
+    if protocol_res.data:
+        raise HTTPException(status_code=400, detail="That seat is already assigned to a protocol officer.")
 
 
 @conference_router.get("/{conf_id}/dignitaries", response_model=List[Dict[str, Any]])
@@ -413,7 +520,7 @@ def create_dignitary(
     session_id: str,
     dignitary: DignitaryCreate,
     supabase: Client = Depends(get_supabase),
-    user=Depends(require_editor_or_admin),
+    user=Depends(get_current_user),
 ):
     payload = dignitary.model_dump(exclude_unset=True)
     session = _get_session_record(session_id, supabase)
@@ -427,6 +534,18 @@ def create_dignitary(
     roster_entry = _get_roster_entry(conference_dignitary_id, supabase, session.get("conference_id"))
     if roster_entry.get("conference_id") != session.get("conference_id"):
         raise HTTPException(status_code=400, detail="Conference dignitary does not belong to this conference")
+    if not _can_create_session_dignitary(supabase, user.id, session, roster_entry.get("id")):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins, editors, or the assigned protocol officer can place this dignitary on the seating map.",
+        )
+    _check_session_seat_available(
+        supabase,
+        session_id,
+        payload.get("section"),
+        payload.get("row_num"),
+        payload.get("col_num"),
+    )
 
     source = roster_entry.get("dignitary") or {}
     data = {
@@ -471,14 +590,39 @@ def update_dignitary(
     dignitary_id: str,
     dignitary: DignitaryUpdate,
     supabase: Client = Depends(get_supabase),
-    user=Depends(require_editor_or_admin),
+    user=Depends(get_current_user),
 ):
     data = dignitary.model_dump(exclude_unset=True)
     existing = _get_dignitary_or_404(dignitary_id, supabase)
+    profile = get_profile_record(supabase, user.id)
+
+    if profile.get("role") not in ("admin", "editor"):
+        requested_fields = set(data.keys())
+        non_status_fields = requested_fields - {"status"}
+        if non_status_fields and not non_status_fields.issubset(SEATING_ASSIGNMENT_FIELDS):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only admins or editors can edit dignitary profile details.",
+            )
+        if non_status_fields and not _can_manage_seating(supabase, user.id, existing):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only admins, editors, or the assigned protocol officer can change this seating assignment.",
+            )
+    if SEATING_ASSIGNMENT_FIELDS.intersection(data.keys()):
+        _check_session_seat_available(
+            supabase,
+            existing["session_id"],
+            data.get("section", existing.get("section")),
+            data.get("row_num", existing.get("row_num")),
+            data.get("col_num", existing.get("col_num")),
+            ignore_dignitary_id=dignitary_id,
+        )
+
     if "status" in data and data["status"] != existing.get("status") and not _can_manage_status(supabase, user.id, existing):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins or the assigned protocol officer can change dignitary status.",
+            detail="Only admins, allowed protocol officers, or the assigned protocol officer can change dignitary status.",
         )
 
     data["updated_at"] = utc_now_iso()
@@ -507,7 +651,7 @@ def update_dignitary_status(
     if not _can_manage_status(supabase, user.id, existing):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins or the assigned protocol officer can change dignitary status.",
+            detail="Only admins, allowed protocol officers, or the assigned protocol officer can change dignitary status.",
         )
 
     res = (

@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS public.conferences (
     venue       TEXT,
     description TEXT,
     auditorium_id UUID REFERENCES public.auditoriums(id),
+    all_protocols_can_update_status BOOLEAN NOT NULL DEFAULT FALSE,
     created_by  UUID REFERENCES public.profiles(id),
     created_at  TIMESTAMPTZ DEFAULT NOW(),
     updated_at  TIMESTAMPTZ DEFAULT NOW()
@@ -88,6 +89,7 @@ ALTER TABLE public.conferences
     ADD COLUMN IF NOT EXISTS venue TEXT,
     ADD COLUMN IF NOT EXISTS description TEXT,
     ADD COLUMN IF NOT EXISTS auditorium_id UUID REFERENCES public.auditoriums(id),
+    ADD COLUMN IF NOT EXISTS all_protocols_can_update_status BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES public.profiles(id),
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
@@ -412,6 +414,33 @@ CREATE TABLE IF NOT EXISTS public.conference_protocol_assignments (
 
 ALTER TABLE public.conference_protocol_assignments ENABLE ROW LEVEL SECURITY;
 
+CREATE TABLE IF NOT EXISTS public.protocol_seats (
+    id                               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id                       UUID NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+    user_id                          UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    assigned_conference_dignitary_id UUID NOT NULL REFERENCES public.conference_dignitaries(id) ON DELETE CASCADE,
+    section                          TEXT,
+    row_num                          INTEGER,
+    col_num                          INTEGER,
+    notes                            TEXT,
+    created_by                       UUID REFERENCES public.profiles(id),
+    created_at                       TIMESTAMPTZ DEFAULT NOW(),
+    updated_at                       TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (session_id, user_id),
+    UNIQUE (session_id, section, row_num, col_num)
+);
+
+ALTER TABLE public.protocol_seats ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "protocol_seats_read" ON public.protocol_seats;
+CREATE POLICY "protocol_seats_read" ON public.protocol_seats
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "protocol_seats_write" ON public.protocol_seats;
+CREATE POLICY "protocol_seats_write" ON public.protocol_seats
+    FOR ALL USING (public.is_editor_or_admin() OR user_id = auth.uid())
+    WITH CHECK (public.is_editor_or_admin() OR user_id = auth.uid());
+
 DROP POLICY IF EXISTS "conference_protocol_assignments_read" ON public.conference_protocol_assignments;
 CREATE POLICY "conference_protocol_assignments_read" ON public.conference_protocol_assignments
     FOR SELECT USING (auth.role() = 'authenticated');
@@ -447,6 +476,12 @@ BEGIN
         WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'conference_protocol_assignments'
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.conference_protocol_assignments;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'protocol_seats'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.protocol_seats;
     END IF;
 END $$;
 

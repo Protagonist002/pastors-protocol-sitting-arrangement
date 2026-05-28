@@ -1554,6 +1554,10 @@ textarea.input {
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
+.seat.occ-protocol {
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.16);
+}
+
 .seat:hover {
   transform: translateY(-2px) scale(1.08);
   box-shadow: 0 12px 18px rgba(0, 0, 0, 0.24);
@@ -1598,6 +1602,222 @@ textarea.input {
   font-size: 0.62rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.seating-list {
+  display: grid;
+  gap: 16px;
+}
+
+.seating-list-section {
+  border: 1px solid var(--line-soft);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 16px;
+}
+
+.seating-list-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.seating-list-section-title {
+  margin: 0;
+  color: var(--gold-bright);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.seating-list-section-meta {
+  margin: 4px 0 0;
+  color: var(--text-faint);
+  font-family: 'Azeret Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.seating-list-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.seating-list-row {
+  display: grid;
+  grid-template-columns: 92px minmax(180px, 1fr) 92px minmax(180px, 1.25fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  background: rgba(2, 16, 7, 0.62);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.seating-list-row:hover,
+.seating-list-row:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(214, 187, 117, 0.55);
+  background: rgba(214, 187, 117, 0.08);
+  outline: none;
+}
+
+.seating-list-seat {
+  color: var(--gold-bright);
+  font-family: 'Azeret Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.seating-list-person,
+.seating-list-note {
+  min-width: 0;
+}
+
+.seating-list-name {
+  display: block;
+  color: var(--text-main);
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seating-list-title {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seating-list-note {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.seating-list-kind {
+  justify-self: start;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-family: 'Azeret Mono', monospace;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seating-list-kind--dignitary {
+  color: var(--gold-bright);
+  border: 1px solid rgba(214, 187, 117, 0.32);
+  background: rgba(214, 187, 117, 0.1);
+}
+
+.seating-list-kind--protocol,
+.card-badge--protocol {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.32);
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.profile-avatar--protocol {
+  border: 3px solid rgba(56, 189, 248, 0.72);
+}
+
+.seat-assignment-mode {
+  display: flex;
+  gap: 8px;
+  padding: 14px 22px 0;
+  flex-wrap: wrap;
+}
+
+.seat-grid-legend-dot--protocol {
+  background: #38bdf8;
+}
+
+.conference-role-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.conference-role-setting-copy {
+  min-width: 0;
+}
+
+.switch-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  color: var(--text-soft);
+  font-family: 'Azeret Mono', monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.switch-control input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch-control-track {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.switch-control-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-soft);
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.switch-control input:checked + .switch-control-track {
+  border-color: rgba(214, 187, 117, 0.75);
+  background: rgba(214, 187, 117, 0.22);
+}
+
+.switch-control input:checked + .switch-control-track .switch-control-thumb {
+  transform: translateX(20px);
+  background: var(--gold-bright);
+}
+
+.switch-control input:focus-visible + .switch-control-track {
+  box-shadow: 0 0 0 3px rgba(214, 187, 117, 0.22);
 }
 
 .fade-in {
@@ -2207,6 +2427,14 @@ html[data-theme='dark'] .auth-page {
   height: 38px;
   min-width: 38px;
   border-radius: 12px;
+}
+
+.conference-picker-filter .input {
+  flex: 1 1 220px;
+}
+
+.conference-picker-filter .btn {
+  flex: 0 0 auto;
 }
 
 .config-grid {
@@ -3010,6 +3238,7 @@ img {
 
   .modal-list-item .conference-picker-add {
     width: 38px;
+    height: 38px;
     min-width: 38px;
   }
 
@@ -3110,11 +3339,38 @@ img {
   }
 
   .conference-picker-row {
+    flex-direction: row;
+    align-items: center;
     flex-wrap: nowrap;
+    gap: 10px;
+    padding: 12px;
   }
 
   .conference-picker-row > :first-child {
     width: auto;
+  }
+
+  .conference-picker-copy {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-right: 4px;
+  }
+
+  .conference-picker-filter {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .conference-picker-filter .input {
+    flex: 1 1 150px;
+    width: auto;
+  }
+
+  .conference-picker-filter .btn {
+    width: auto;
+    min-width: 94px;
+    flex: 0 0 auto;
   }
 
   .config-card-row,
@@ -3137,6 +3393,24 @@ img {
     margin-inline: -4px;
     padding-inline: 4px 0;
     overscroll-behavior-x: contain;
+  }
+
+  .seating-list-row {
+    grid-template-columns: 82px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .seating-list-note {
+    grid-column: 2;
+  }
+
+  .seating-list-kind {
+    grid-column: 2;
+  }
+
+  .conference-role-setting {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .seat-grid-cols,
@@ -3168,6 +3442,38 @@ img {
 @media (max-width: 480px) {
   .btn {
     white-space: normal;
+  }
+
+  .modal-panel {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    margin: 8px;
+    overflow-x: hidden;
+  }
+
+  .modal-body {
+    overflow-x: hidden;
+  }
+
+  .conference-picker-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .conference-picker-filter .input,
+  .conference-picker-filter .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .conference-picker-row {
+    min-height: 62px;
+  }
+
+  .modal-list-item .conference-picker-add {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
   }
 
   .header-logo-title {
@@ -3228,6 +3534,35 @@ img {
 
   .seat-grid-row-label {
     width: 24px;
+  }
+
+  .seating-list-section {
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .seating-list-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    min-height: 0;
+  }
+
+  .seating-list-note {
+    grid-column: auto;
+  }
+
+  .seating-list-kind {
+    grid-column: auto;
+  }
+
+  .seating-list-name,
+  .seating-list-title {
+    white-space: normal;
+  }
+
+  .switch-control {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .venue-map {

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 def _raise_conference_schema_error(error: Exception) -> None:
     missing_fields = [
         field_name
-        for field_name in ("time", "start_date", "end_date", "auditorium_id", "created_by", "updated_at")
+        for field_name in ("time", "start_date", "end_date", "auditorium_id", "all_protocols_can_update_status", "created_by", "updated_at")
         if is_missing_schema_field_error(error, "conferences", field_name)
     ]
     if missing_fields:
@@ -55,6 +55,9 @@ def _strip_missing_conference_fields(data: Dict[str, Any], error: APIError) -> D
     ):
         retry_data.pop("start_date", None)
         retry_data.pop("end_date", None)
+        stripped = True
+    if strip_missing_field(retry_data, error, "conferences", "all_protocols_can_update_status") is not None:
+        retry_data.pop("all_protocols_can_update_status", None)
         stripped = True
     return retry_data if stripped else None
 

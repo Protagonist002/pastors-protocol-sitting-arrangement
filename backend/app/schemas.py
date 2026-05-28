@@ -34,6 +34,7 @@ class ConferenceCreate(BaseModel):
     venue: Optional[str] = None
     description: Optional[str] = None
     auditorium_id: Optional[str] = None
+    all_protocols_can_update_status: Optional[bool] = False
 
 
 class ConferenceUpdate(BaseModel):
@@ -45,6 +46,7 @@ class ConferenceUpdate(BaseModel):
     venue: Optional[str] = None
     description: Optional[str] = None
     auditorium_id: Optional[str] = None
+    all_protocols_can_update_status: Optional[bool] = None
 
 
 class SessionCreate(BaseModel):
@@ -95,6 +97,22 @@ class DignitaryUpdate(BaseModel):
 
 class DignitaryStatusUpdate(BaseModel):
     status: Literal["pending", "arrived", "seated", "absent"]
+
+
+class ProtocolSeatCreate(BaseModel):
+    user_id: str
+    assigned_conference_dignitary_id: str
+    section: Optional[str] = None
+    row_num: Optional[int] = None
+    col_num: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class ProtocolSeatUpdate(BaseModel):
+    section: Optional[str] = None
+    row_num: Optional[int] = None
+    col_num: Optional[int] = None
+    notes: Optional[str] = None
 
 
 class DirectoryDignitaryCreate(BaseModel):
