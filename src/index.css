@@ -974,6 +974,10 @@ textarea.input {
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
 }
 
+.grid-cards--recognition {
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+}
+
 .card-content,
 .session-card,
 .attendee-card {
@@ -1150,6 +1154,37 @@ textarea.input {
   height: 56px;
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(7, 13, 10, 0.8), rgba(17, 28, 22, 0.94));
+}
+
+.attendee-card--recognition {
+  min-height: 226px;
+}
+
+.attendee-card--recognition .attendee-card-top {
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.attendee-card--recognition .attendee-avatar {
+  width: 104px;
+  height: 104px;
+  border-width: 3px;
+  border-radius: 26px;
+  font-size: 2rem;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+}
+
+.attendee-card--recognition .attendee-name {
+  font-size: 1.1rem;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.attendee-card--recognition .attendee-title,
+.attendee-card--recognition .attendee-church {
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .attendee-name {
@@ -3010,6 +3045,17 @@ img {
 
   .attendee-card {
     min-height: 0;
+  }
+
+  .grid-cards--recognition {
+    grid-template-columns: 1fr;
+  }
+
+  .attendee-card--recognition .attendee-avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 22px;
+    font-size: 1.75rem;
   }
 
   .attendee-card-actions {

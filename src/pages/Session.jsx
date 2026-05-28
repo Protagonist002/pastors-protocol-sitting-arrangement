@@ -263,12 +263,12 @@ const DignitaryList = memo(function DignitaryList({ auditorium, attendees, canEd
           <p className="empty-state-text">No session dignitaries found</p>
         </div>
       ) : (
-        <div className="grid-cards">
+        <div className="grid-cards grid-cards--recognition">
           {filtered.map((dignitary) => {
             const section = getSectionById(auditorium, dignitary.section);
             const canUpdate = canManageStatus(dignitary);
             return (
-              <div key={dignitary.id} className="card card-hover attendee-card" onClick={() => onView(dignitary)}>
+              <div key={dignitary.id} className="card card-hover attendee-card attendee-card--recognition" onClick={() => onView(dignitary)}>
                 <div className="attendee-card-top">
                   <div className="attendee-avatar" style={{ borderColor: `${statusColor[dignitary.status] || 'var(--line-strong)'}55` }}>
                     {dignitary.picture_url
