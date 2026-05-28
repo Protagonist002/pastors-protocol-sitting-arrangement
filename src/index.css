@@ -473,9 +473,9 @@ select.input option { background: #0a1a10; }
   --line-strong: rgba(156, 180, 162, 0.2);
   --line-gold: rgba(214, 187, 117, 0.28);
   --text-main: #edf4ee;
-  --text-soft: #b4c4b7;
-  --text-muted: #8ea191;
-  --text-faint: #6f816f;
+  --text-soft: #c7d4ca;
+  --text-muted: #a8b8ab;
+  --text-faint: #92a395;
   --gold-main: #d6bb75;
   --gold-bright: #f1ddb0;
   --gold-shadow: rgba(214, 187, 117, 0.22);
@@ -1526,7 +1526,9 @@ textarea.input {
   border-radius: 999px;
   border: 1px solid var(--line-soft);
   background: rgba(255, 255, 255, 0.03);
-  font-size: 0.6rem;
+  color: var(--text-soft);
+  font-size: 0.64rem;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1543,8 +1545,9 @@ textarea.input {
 
 .seat-grid-col-label,
 .seat-grid-row-label {
-  color: #556958;
+  color: var(--text-soft);
   font-family: 'Azeret Mono', monospace;
+  font-weight: 800;
 }
 
 .seat {
@@ -1597,9 +1600,10 @@ textarea.input {
 
 .seat-grid-hint {
   margin-top: 14px;
-  color: var(--text-faint);
+  color: var(--text-soft);
   font-family: 'Azeret Mono', monospace;
   font-size: 0.62rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1633,9 +1637,10 @@ textarea.input {
 
 .seating-list-section-meta {
   margin: 4px 0 0;
-  color: var(--text-faint);
+  color: var(--text-soft);
   font-family: 'Azeret Mono', monospace;
   font-size: 0.58rem;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1716,7 +1721,7 @@ textarea.input {
 }
 
 .seating-list-note-label {
-  color: var(--text-faint);
+  color: var(--text-soft);
   font-family: 'Azeret Mono', monospace;
   font-size: 0.58rem;
   font-weight: 700;
@@ -1729,7 +1734,7 @@ textarea.input {
 }
 
 .seating-list-note--empty .seating-list-note-text {
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .seating-list-kind {
@@ -2070,9 +2075,9 @@ html[data-theme='light'] {
   --line-soft: rgba(110, 92, 61, 0.12);
   --line-strong: rgba(110, 92, 61, 0.24);
   --text-main: #1f2a23;
-  --text-soft: #55655d;
-  --text-muted: #6d7d73;
-  --text-faint: #8a988f;
+  --text-soft: #3f5047;
+  --text-muted: #52665a;
+  --text-faint: #607468;
   --accent-strong: #2d6a4f;
   --accent-soft: rgba(45, 106, 79, 0.08);
   --warning-strong: #a77414;
@@ -2091,9 +2096,9 @@ html[data-theme='dark'] {
   --line-soft: rgba(173, 155, 121, 0.12);
   --line-strong: rgba(173, 155, 121, 0.22);
   --text-main: #eef3ef;
-  --text-soft: #b7c1bb;
-  --text-muted: #98a59d;
-  --text-faint: #78857e;
+  --text-soft: #d0d8d2;
+  --text-muted: #b8c3bc;
+  --text-faint: #a4b0a8;
   --accent-strong: #8fd1b0;
   --accent-soft: rgba(143, 209, 176, 0.12);
   --warning-strong: #e0bf67;
@@ -2791,13 +2796,19 @@ html[data-theme='dark'] .dashboard-conference-card {
   cursor: default;
   background: rgba(255, 255, 255, 0.08);
   border-style: dashed;
-  color: rgba(9, 17, 12, 0.82);
+  color: #09110c;
 }
 
 .venue-map-hotspot-label {
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 900;
   line-height: 1.2;
+  color: #050807;
+  background: rgba(255, 252, 243, 0.78);
+  border: 1px solid rgba(9, 17, 12, 0.2);
+  border-radius: 8px;
+  padding: 4px 7px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.62);
   text-transform: uppercase;
 }
 
@@ -2809,7 +2820,8 @@ html[data-theme='dark'] .dashboard-conference-card {
   background: rgba(9, 17, 12, 0.76);
   color: #f5f0df;
   font-family: 'Azeret Mono', monospace;
-  font-size: 0.56rem;
+  font-size: 0.62rem;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -4418,4 +4430,57 @@ img {
   .control-tracker-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Outdoor readability: lift low-contrast helper text across the app. */
+.input::placeholder,
+.loader-text,
+.page-subtitle,
+.card-meta,
+.session-card-meta,
+.stat-label,
+.tab-btn,
+.empty-state,
+.empty-state-sub,
+.attendee-church,
+.seat-ref,
+.auth-subtitle,
+.auth-tab:not(.active),
+.auth-note,
+.profile-info-label,
+.status-section-label,
+.modal-header-sub,
+.venue-scroll-hint,
+.profile-summary-meta,
+.control-protocol-meta,
+.control-session-unassigned,
+.control-protocol-side,
+.dashboard-list-subtitle,
+.dashboard-card-meta {
+  color: var(--text-muted);
+}
+
+.page-description,
+.card-desc,
+.session-card-desc,
+.seat-grid-info,
+.seat-grid-legend-item,
+.seat-grid-col-label,
+.seat-grid-row-label,
+.seat-grid-hint {
+  color: var(--text-soft);
+}
+
+.section-block {
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.section-block.closed-sec {
+  opacity: 0.7;
+}
+
+.venue-map-hotspot-meta,
+.venue-map-hotspot-closed {
+  color: #fff8e6;
 }
