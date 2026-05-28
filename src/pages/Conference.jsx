@@ -158,7 +158,8 @@ export function Conference() {
 
   const { data: conf, isLoading: isLoadingConf } = useConference(confId);
   const { sessionsQuery, createSession, deleteSession } = useSessions(confId);
-  const { conferenceDignitariesQuery, addConferenceDignitary, removeConferenceDignitary } = useConferenceDignitaries(confId);
+  const shouldLoadRoster = tab === 'dignitaries' || tab === 'export' || showDignitaryPicker;
+  const { conferenceDignitariesQuery, addConferenceDignitary, removeConferenceDignitary } = useConferenceDignitaries(confId, shouldLoadRoster);
   const { exportArrivals } = useConferenceProtocolAssignments(confId, isAdmin && tab === 'export');
   const { directoryQuery } = useDirectoryDignitaries(showDignitaryPicker);
 
@@ -190,7 +191,7 @@ export function Conference() {
     [conferenceDignitaries],
   );
 
-  if (isLoadingConf || isLoadingSessions || isLoadingRoster) {
+  if (isLoadingConf || isLoadingSessions) {
     return <Loader text="Loading conference..." />;
   }
   if (!conf) return <div className="empty-state" style={{ marginTop: 100 }}>Conference not found.</div>;
@@ -311,7 +312,9 @@ export function Conference() {
               </div>
             </div>
 
-            {conferenceDignitaries.length === 0 ? (
+            {isLoadingRoster ? (
+              <Loader text="Loading conference dignitaries..." />
+            ) : conferenceDignitaries.length === 0 ? (
               <div className="empty-state" style={{ minHeight: 180 }}>
                 <div className="empty-state-icon">Roster</div>
                 <p className="empty-state-text">No dignitaries added to this conference yet</p>
@@ -377,7 +380,9 @@ export function Conference() {
             <div className="card profile-summary-card">
               <div className="profile-summary-title">Conference-wide arrivals</div>
               <div className="profile-summary-subtitle">
-                {arrivedConferenceDignitaries.length} of {conferenceDignitaries.length} dignitar{conferenceDignitaries.length === 1 ? 'y has' : 'ies have'} recorded first arrivals
+                {isLoadingRoster
+                  ? 'Loading arrival records...'
+                  : `${arrivedConferenceDignitaries.length} of ${conferenceDignitaries.length} dignitar${conferenceDignitaries.length === 1 ? 'y has' : 'ies have'} recorded first arrivals`}
               </div>
             </div>
           </section>

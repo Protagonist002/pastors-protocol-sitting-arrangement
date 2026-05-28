@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/apiClient';
 import { supabase } from '../lib/supabase';
 import { buildControlCenterModel } from '../lib/controlCenter';
@@ -16,20 +16,20 @@ async function fetchControlCenterData(confId) {
     };
   }
 
-  const [
-    conferenceResponse,
-    sessionsResponse,
-    rosterResponse,
-    assignmentsResponse,
-    usersResponse,
-  ] = await Promise.all([
+  try {
+    const { data } = await api.get(`/conferences/${confId}/control-center`);
+    return data;
+  } catch (error) {
+    if (error.response?.status !== 404) throw error;
+  }
+
+  const [conferenceResponse, sessionsResponse, rosterResponse, assignmentsResponse, usersResponse] = await Promise.all([
     api.get(`/conferences/${confId}`),
     api.get(`/conferences/${confId}/sessions`),
     api.get(`/conferences/${confId}/dignitaries`),
     api.get(`/conferences/${confId}/protocol-assignments`),
     api.get('/users/'),
   ]);
-
   const sessions = sessionsResponse.data || [];
   const sessionDignitaryPairs = await Promise.all(
     sessions.map(async (session) => {
@@ -55,6 +55,7 @@ export function useControlCenter(confId, enabled = true) {
     queryKey: ['control-center', confId],
     queryFn: () => fetchControlCenterData(confId),
     enabled: Boolean(confId) && enabled,
+    placeholderData: keepPreviousData,
     refetchInterval: 30_000,
   });
 

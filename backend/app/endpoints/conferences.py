@@ -1,4 +1,6 @@
 from html import escape
+import logging
+from time import perf_counter
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from postgrest.exceptions import APIError
@@ -18,6 +20,7 @@ from ..time_utils import utc_now_iso
 
 router = APIRouter()
 CONFERENCE_SELECT = "*, auditorium:auditoriums(*)"
+logger = logging.getLogger(__name__)
 
 
 def _raise_conference_schema_error(error: Exception) -> None:
@@ -54,6 +57,21 @@ def _strip_missing_conference_fields(data: Dict[str, Any], error: APIError) -> D
         retry_data.pop("end_date", None)
         stripped = True
     return retry_data if stripped else None
+
+
+def _time_query(label: str, conf_id: str, operation):
+    started_at = perf_counter()
+    res = operation()
+    elapsed_ms = (perf_counter() - started_at) * 1000
+    row_count = len(res.data or []) if isinstance(getattr(res, "data", None), list) else int(bool(getattr(res, "data", None)))
+    logger.info(
+        "control_center_query conf_id=%s query=%s rows=%s elapsed_ms=%.1f",
+        conf_id,
+        label,
+        row_count,
+        elapsed_ms,
+    )
+    return res
 
 
 def _get_conference_or_404(supabase: Client, conf_id: str) -> Dict[str, Any]:
@@ -312,6 +330,181 @@ def get_conference(
     user=Depends(get_current_user),
 ):
     return _get_conference_or_404(supabase, conf_id)
+
+
+@router.get("/{conf_id}/control-center", response_model=Dict[str, Any])
+def get_conference_control_center(
+    conf_id: str,
+    supabase: Client = Depends(get_supabase),
+    user=Depends(require_admin),
+):
+    request_started_at = perf_counter()
+    conference_res = _time_query(
+        "conference",
+        conf_id,
+        lambda: supabase.table("conferences").select(CONFERENCE_SELECT).eq("id", conf_id).execute(),
+    )
+    if not conference_res.data:
+        raise HTTPException(status_code=404, detail="Conference not found")
+    conference = conference_res.data[0]
+
+    sessions_res = _time_query(
+        "sessions",
+        conf_id,
+        lambda: (
+            supabase.table("sessions")
+            .select("*")
+            .eq("conference_id", conf_id)
+            .order("date", desc=True)
+            .execute()
+        ),
+    )
+    sessions = sessions_res.data or []
+    session_ids = [session["id"] for session in sessions]
+
+    roster_res = _time_query(
+        "conference_dignitaries",
+        conf_id,
+        lambda: (
+            supabase.table("conference_dignitaries")
+            .select("*, dignitary:dignitary_directory(*)")
+            .eq("conference_id", conf_id)
+            .order("created_at", desc=False)
+            .execute()
+        ),
+    )
+    roster_rows = roster_res.data or []
+
+    try:
+        assignments_res = _time_query(
+            "conference_protocol_assignments",
+            conf_id,
+            lambda: (
+                supabase.table("conference_protocol_assignments")
+                .select("*")
+                .eq("conference_id", conf_id)
+                .execute()
+            ),
+        )
+        assignments = assignments_res.data or []
+    except Exception as exc:
+        if is_missing_relation_error(exc, "conference_protocol_assignments"):
+            assignments = []
+        else:
+            raise
+
+    users_res = _time_query(
+        "profiles",
+        conf_id,
+        lambda: supabase.table("profiles").select("*").order("created_at", desc=False).execute(),
+    )
+    users = users_res.data or []
+    profile_map = {row["id"]: row for row in users}
+
+    session_dignitaries = []
+    if session_ids:
+        dignitaries_res = _time_query(
+            "session_dignitaries",
+            conf_id,
+            lambda: (
+                supabase.table("dignitaries")
+                .select("*")
+                .in_("session_id", session_ids)
+                .order("created_at", desc=False)
+                .execute()
+            ),
+        )
+        session_dignitaries = dignitaries_res.data or []
+
+    first_arrival_session_ids = [row["first_arrival_session_id"] for row in roster_rows if row.get("first_arrival_session_id")]
+    session_map_started_at = perf_counter()
+    session_map = _fetch_session_map(
+        supabase,
+        first_arrival_session_ids,
+    )
+    logger.info(
+        "control_center_query conf_id=%s query=first_arrival_sessions rows=%s elapsed_ms=%.1f",
+        conf_id,
+        len(session_map),
+        (perf_counter() - session_map_started_at) * 1000,
+    )
+    assignment_by_roster_id = {
+        row["assigned_conference_dignitary_id"]: row
+        for row in assignments
+        if row.get("assigned_conference_dignitary_id")
+    }
+
+    roster = []
+    for row in roster_rows:
+        dignitary = row.get("dignitary") or {}
+        assignment = assignment_by_roster_id.get(row.get("id"))
+        assigned_profile = profile_map.get(assignment.get("user_id")) if assignment else None
+        roster.append({
+            **dignitary,
+            "id": row.get("id"),
+            "conference_dignitary_id": row.get("id"),
+            "conference_id": row.get("conference_id"),
+            "directory_dignitary_id": row.get("directory_dignitary_id") or dignitary.get("id"),
+            "created_at": row.get("created_at"),
+            "first_arrival_at": row.get("first_arrival_at"),
+            "first_arrival_session_id": row.get("first_arrival_session_id"),
+            "first_arrival_session": session_map.get(row.get("first_arrival_session_id")),
+            "assigned_protocol_user_id": assignment.get("user_id") if assignment else None,
+            "assigned_protocol_name": assigned_profile.get("full_name") if assigned_profile else None,
+            "assigned_protocol_profile": assigned_profile,
+            "conference_role": assignment.get("conference_role") if assignment else None,
+        })
+
+    roster_by_id = {row["id"]: row for row in roster_rows}
+    directory_ids = [
+        row["directory_dignitary_id"]
+        for row in roster_by_id.values()
+        if row.get("directory_dignitary_id")
+    ]
+    directory_map_started_at = perf_counter()
+    directory_map = _fetch_directory_map(
+        supabase,
+        directory_ids,
+    )
+    logger.info(
+        "control_center_query conf_id=%s query=assignment_directory rows=%s elapsed_ms=%.1f",
+        conf_id,
+        len(directory_map),
+        (perf_counter() - directory_map_started_at) * 1000,
+    )
+    enrich_started_at = perf_counter()
+    enriched_assignments = _enrich_protocol_assignments(assignments, profile_map, roster_by_id, directory_map)
+    logger.info(
+        "control_center_step conf_id=%s step=enrich_assignments rows=%s elapsed_ms=%.1f",
+        conf_id,
+        len(enriched_assignments),
+        (perf_counter() - enrich_started_at) * 1000,
+    )
+
+    session_dignitaries_by_session_id = {session_id: [] for session_id in session_ids}
+    for dignitary in session_dignitaries:
+        session_dignitaries_by_session_id.setdefault(dignitary.get("session_id"), []).append(dignitary)
+
+    elapsed_ms = (perf_counter() - request_started_at) * 1000
+    logger.info(
+        "control_center_total conf_id=%s sessions=%s roster=%s assignments=%s users=%s session_dignitaries=%s elapsed_ms=%.1f",
+        conf_id,
+        len(sessions),
+        len(roster),
+        len(enriched_assignments),
+        len(users),
+        len(session_dignitaries),
+        elapsed_ms,
+    )
+
+    return {
+        "conference": conference,
+        "sessions": sessions,
+        "roster": roster,
+        "assignments": enriched_assignments,
+        "users": users,
+        "sessionDignitariesBySessionId": session_dignitaries_by_session_id,
+    }
 
 
 @router.post("/", response_model=Dict[str, Any])
