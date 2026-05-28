@@ -2183,6 +2183,32 @@ html[data-theme='dark'] .auth-page {
   gap: 12px;
 }
 
+.conference-picker-row {
+  flex-wrap: nowrap;
+  min-height: 58px;
+}
+
+.conference-picker-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding-right: 8px;
+}
+
+.conference-picker-row .profile-summary-title,
+.conference-picker-row .profile-summary-subtitle,
+.conference-picker-row .profile-summary-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conference-picker-add {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 12px;
+}
+
 .config-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -2982,6 +3008,11 @@ img {
     min-width: 0;
   }
 
+  .modal-list-item .conference-picker-add {
+    width: 38px;
+    min-width: 38px;
+  }
+
   .page-header-actions .btn,
   .section-card-actions .btn,
   .page-header-actions > :not(.btn),
@@ -3076,6 +3107,14 @@ img {
   .modal-list-item > :first-child {
     width: 100%;
     min-width: 0;
+  }
+
+  .conference-picker-row {
+    flex-wrap: nowrap;
+  }
+
+  .conference-picker-row > :first-child {
+    width: auto;
   }
 
   .config-card-row,

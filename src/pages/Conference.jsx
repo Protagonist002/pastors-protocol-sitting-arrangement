@@ -1,4 +1,4 @@
-import { Activity, Plus } from 'lucide-react';
+import { Activity, Plus, UserPlus } from 'lucide-react';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../components/auth-context';
@@ -112,15 +112,24 @@ function AddConferenceDignitaryModal({ available, adding, loading, onAdd, onClos
         ) : (
           <div className="modal-list-stack">
             {filtered.map((dignitary) => (
-              <div key={dignitary.id} className="card modal-list-item">
-                <div style={{ minWidth: 0 }}>
+              <div key={dignitary.id} className="card modal-list-item conference-picker-row">
+                <div className="conference-picker-copy">
                   <div className="profile-summary-title">{dignitary.name}</div>
                   <div className="profile-summary-subtitle">{dignitary.title}</div>
                   {(dignitary.church || dignitary.extension) && (
                     <div className="profile-summary-meta">{dignitary.church || 'No church listed'}{dignitary.extension ? ` - ${dignitary.extension}` : ''}</div>
                   )}
                 </div>
-                <button className="btn btn-gold btn-sm" disabled={adding} onClick={() => onAdd(dignitary.id)}>Add</button>
+                <button
+                  className="btn btn-gold btn-sm btn-icon conference-picker-add"
+                  disabled={adding}
+                  onClick={() => onAdd(dignitary.id)}
+                  type="button"
+                  aria-label={`Add ${dignitary.name} to conference`}
+                  title={`Add ${dignitary.name} to conference`}
+                >
+                  <UserPlus size={16} />
+                </button>
               </div>
             ))}
           </div>
