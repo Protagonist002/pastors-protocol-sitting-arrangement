@@ -2268,22 +2268,25 @@ html[data-theme='dark'] .auth-page {
 
 .profile-page-hero--embedded {
   padding: 0;
+  gap: 30px;
+  align-items: center;
 }
 
 .profile-page-avatar {
-  width: 76px;
-  height: 76px;
-  border-radius: 24px;
+  width: 168px;
+  height: 168px;
+  border-radius: 34px;
   flex-shrink: 0;
-  border: 1px solid var(--line-soft);
-  font-size: 1.55rem;
+  border: 3px solid var(--line-soft);
+  font-size: 3.4rem;
+  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.28);
 }
 
 .profile-page-avatar-button {
   padding: 0;
   background: var(--surface-soft);
   cursor: default;
-  border-width: 1px;
+  border-width: 3px;
   border-style: solid;
   border-color: var(--line-soft);
 }
@@ -2296,7 +2299,7 @@ html[data-theme='dark'] .auth-page {
 .profile-page-avatar-button.is-editing:hover {
   transform: translateY(-1px);
   border-color: var(--line-strong);
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.34);
 }
 
 .profile-page-identity {
@@ -2447,12 +2450,15 @@ html[data-theme='dark'] .dashboard-conference-card {
 
   .profile-page-hero--embedded {
     padding: 0;
+    align-items: flex-start;
+    gap: 22px;
   }
 
-  .profile-page-avatar {
-    width: 68px;
-    height: 68px;
-    border-radius: 22px;
+  .profile-page-hero--embedded .profile-page-avatar {
+    width: 132px;
+    height: 132px;
+    border-radius: 30px;
+    font-size: 2.7rem;
   }
 
   .page-chip-row,
@@ -3142,6 +3148,13 @@ img {
     gap: 8px;
   }
 
+  .profile-page-hero--embedded .profile-page-avatar {
+    width: 116px;
+    height: 116px;
+    border-radius: 26px;
+    font-size: 2.35rem;
+  }
+
   .page-header-actions .btn,
   .section-card-actions .btn,
   .form-actions .btn,
@@ -3252,6 +3265,13 @@ img {
     height: 30px;
     font-size: 0.78rem;
     border-radius: 999px;
+  }
+
+  .profile-page-hero--embedded .profile-page-avatar {
+    width: 132px;
+    height: 132px;
+    border-radius: 30px;
+    font-size: 2.7rem;
   }
 
   .role-tag {
