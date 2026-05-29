@@ -26,6 +26,16 @@ function normalizeSectionCount(value, fallback = null) {
   if (Number.isNaN(parsed)) return fallback;
   return Math.max(1, Math.min(20, parsed));
 }
+
+function hasArrivalUpdate(dignitary) {
+  return Boolean(dignitary?.status && dignitary.status !== 'pending');
+}
+
+function getActivityTime(dignitary) {
+  const value = dignitary?.updated_at || dignitary?.created_at || '';
+  const time = value ? new Date(value).getTime() : 0;
+  return Number.isNaN(time) ? 0 : time;
+}
 import { api } from '../services/apiClient';
 
 function AddDignitaryToSessionForm({ auditorium, conferenceDignitaries, initialAssignment, loadingConferenceDignitaries = false, embedded = false, onSave, onCancel }) {
@@ -884,6 +894,87 @@ function SectionConfigModal({ auditorium, sessionId, currentConfig, onClose, onS
   );
 }
 
+function ArrivalsList({ auditorium, attendees, onLocateSeat }) {
+  const statusLabels = useMemo(() => {
+    const labels = {};
+    STATUSES.forEach((statusOption) => {
+      labels[statusOption.id] = statusOption.label;
+    });
+    return labels;
+  }, []);
+  const arrivalRows = useMemo(() => attendees
+    .filter(hasArrivalUpdate)
+    .slice()
+    .sort((a, b) => {
+      const activityCompare = getActivityTime(b) - getActivityTime(a);
+      if (activityCompare !== 0) return activityCompare;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    }), [attendees]);
+
+  if (arrivalRows.length === 0) {
+    return (
+      <div className="empty-state">
+        <div className="empty-state-icon">Arrivals</div>
+        <p className="empty-state-text">No arrival updates yet</p>
+        <p className="empty-state-sub">Dignitaries appear here when their status changes from Not Arrived.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="arrivals-list">
+      {arrivalRows.map((dignitary) => {
+        const section = getSectionById(auditorium, dignitary.section);
+        const hasSeat = Boolean(dignitary.section && dignitary.row_num && dignitary.col_num);
+        return (
+          <article key={dignitary.id} className="arrival-row">
+            <div className="arrival-person">
+              <div className="seating-list-avatar">
+                {dignitary.picture_url
+                  ? <img src={dignitary.picture_url} alt="" />
+                  : getInitials(dignitary.name, '?')}
+              </div>
+              <div className="arrival-person-copy">
+                <h3 className="arrival-name">{dignitary.title ? `${dignitary.title} ${dignitary.name}` : dignitary.name}</h3>
+                <p className={`arrival-notes ${dignitary.notes ? '' : 'arrival-notes--empty'}`}>{dignitary.notes || 'No notes added'}</p>
+              </div>
+            </div>
+
+            <div className="arrival-status-cell">
+              <span
+                className={`badge ${dignitary.status}`}
+                style={{ borderColor: `${statusColor[dignitary.status] || 'var(--line-strong)'}55` }}
+              >
+                {statusLabels[dignitary.status] || dignitary.status}
+              </span>
+            </div>
+
+            <div className="arrival-seat-cell">
+              <span className="arrival-cell-label">Seating</span>
+              <span className="arrival-seat-value">
+                {hasSeat
+                  ? `${section?.label || dignitary.section} - R${dignitary.row_num} / S${dignitary.col_num}`
+                  : 'Not assigned'}
+              </span>
+            </div>
+
+            <div className="arrival-actions">
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => onLocateSeat(dignitary)}
+                disabled={!hasSeat}
+              >
+                Open Map
+              </button>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 function SeatingList({ auditorium, attendees, protocolSeats, onViewSeat, onViewProtocolSeat }) {
   const openSections = getOpenSections(auditorium);
   const sectionGroups = useMemo(() => {
@@ -1039,6 +1130,10 @@ export function Session() {
     }),
     [conferenceDignitaries, isEditorOrAdmin, managedConferenceDignitaryIds, usedConferenceDignitaryIds],
   );
+  const arrivalActivityCount = useMemo(
+    () => attendees.filter(hasArrivalUpdate).length,
+    [attendees],
+  );
   const supportsSections = auditoriumSupportsSections(auditorium);
 
   useEffect(() => {
@@ -1164,6 +1259,7 @@ export function Session() {
           {[
             { id: 'map', label: 'Seating Map' },
             { id: 'list', label: 'Seating List' },
+            { id: 'arrivals', label: `Arrivals${arrivalActivityCount ? ` (${arrivalActivityCount})` : ''}` },
             { id: 'roster', label: 'Roster' },
           ].map((tabOption) => (
             <button key={tabOption.id} onClick={() => setTab(tabOption.id)} className={`tab-btn ${tab === tabOption.id ? 'active' : ''}`}>
@@ -1199,6 +1295,14 @@ export function Session() {
             protocolSeats={protocolSeats}
             onViewSeat={setViewingAtn}
             onViewProtocolSeat={setViewingProtocolSeat}
+          />
+        )}
+
+        {tab === 'arrivals' && (
+          <ArrivalsList
+            auditorium={auditorium}
+            attendees={attendees}
+            onLocateSeat={handleLocateSeat}
           />
         )}
 

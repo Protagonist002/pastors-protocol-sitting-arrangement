@@ -1856,6 +1856,92 @@ textarea.input {
   background: rgba(14, 165, 233, 0.12);
 }
 
+.arrivals-list {
+  display: grid;
+  gap: 10px;
+}
+
+.arrival-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) 118px minmax(190px, 0.9fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 84px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: rgba(2, 16, 7, 0.66);
+  color: #edf4ee;
+}
+
+.arrival-person {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.arrival-person-copy {
+  min-width: 0;
+}
+
+.arrival-name {
+  margin: 0 0 6px;
+  color: #edf4ee;
+  font-size: 1rem;
+  line-height: 1.25;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrival-notes {
+  margin: 0;
+  color: #d7e3da;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.arrival-notes--empty {
+  color: #cdd8cf;
+}
+
+.arrival-status-cell {
+  justify-self: start;
+}
+
+.arrival-seat-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.arrival-cell-label {
+  color: #f0d78f;
+  font-family: 'Azeret Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.arrival-seat-value {
+  color: #edf4ee;
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrival-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .profile-avatar--protocol {
   border: 3px solid rgba(56, 189, 248, 0.72);
 }
@@ -3541,6 +3627,20 @@ img {
     font-size: 0.86rem;
   }
 
+  .arrival-row {
+    grid-template-columns: minmax(0, 1fr) 118px;
+    align-items: start;
+  }
+
+  .arrival-seat-cell,
+  .arrival-actions {
+    grid-column: 1 / -1;
+  }
+
+  .arrival-actions {
+    justify-content: flex-start;
+  }
+
   .conference-role-setting {
     align-items: flex-start;
     flex-direction: column;
@@ -3708,6 +3808,25 @@ img {
   .seating-list-note {
     padding-top: 8px;
     border-top: 1px solid var(--line-soft);
+  }
+
+  .arrival-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .arrival-person {
+    align-items: flex-start;
+  }
+
+  .arrival-name,
+  .arrival-seat-value {
+    white-space: normal;
+  }
+
+  .arrival-actions .btn {
+    width: 100%;
   }
 
   .switch-control {
