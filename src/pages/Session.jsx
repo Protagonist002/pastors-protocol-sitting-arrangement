@@ -461,7 +461,6 @@ function ProtocolSeatProfile({ auditorium, seat, canEdit, onEdit, onRemove, onLo
         )}
 
         <div className="profile-modal-actions">
-          <button className="btn btn-outline btn-sm" onClick={onClose}>Close</button>
           {hasSeatAssignment && (
             <button className="btn btn-outline btn-sm" onClick={() => onLocateSeat?.(seat)}>Show Seating</button>
           )}

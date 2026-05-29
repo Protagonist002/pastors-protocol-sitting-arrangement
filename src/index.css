@@ -1722,7 +1722,7 @@ textarea.input {
   border: 1px solid var(--line-soft);
   border-radius: 16px;
   background: rgba(2, 16, 7, 0.62);
-  color: inherit;
+  color: #edf4ee;
   text-align: left;
   cursor: pointer;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
@@ -1780,7 +1780,7 @@ textarea.input {
 
 .seating-list-name {
   display: block;
-  color: var(--text-main);
+  color: #edf4ee;
   font-weight: 800;
   font-size: 1rem;
   line-height: 1.2;
@@ -1792,7 +1792,7 @@ textarea.input {
 .seating-list-title {
   display: block;
   margin-top: 4px;
-  color: var(--text-main);
+  color: #d7e3da;
   opacity: 0.78;
   font-size: 0.86rem;
   line-height: 1.35;
@@ -1804,13 +1804,13 @@ textarea.input {
 .seating-list-note {
   display: grid;
   gap: 4px;
-  color: var(--text-main);
+  color: #edf4ee;
   font-size: 0.9rem;
   line-height: 1.45;
 }
 
 .seating-list-note-label {
-  color: var(--text-soft);
+  color: #f0d78f;
   font-family: 'Azeret Mono', monospace;
   font-size: 0.58rem;
   font-weight: 700;
@@ -1820,10 +1820,13 @@ textarea.input {
 
 .seating-list-note-text {
   overflow-wrap: anywhere;
+  color: #edf4ee;
+  font-weight: 600;
 }
 
 .seating-list-note--empty .seating-list-note-text {
-  color: var(--text-muted);
+  color: #cdd8cf;
+  font-weight: 500;
 }
 
 .seating-list-kind {

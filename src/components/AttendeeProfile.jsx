@@ -76,7 +76,6 @@ export function AttendeeProfile({ auditorium, atn, canEdit, canRemoveFromMap, ca
         </div>
 
         <div className="profile-modal-actions">
-          <button className="btn btn-outline btn-sm" onClick={onClose}>Close</button>
           {hasSeatAssignment && (
             <button className="btn btn-outline btn-sm" onClick={() => onLocateSeat?.(atn)}>Show Seating</button>
           )}
