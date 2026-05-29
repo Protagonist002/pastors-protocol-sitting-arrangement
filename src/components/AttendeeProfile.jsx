@@ -2,8 +2,9 @@ import { STATUSES, getSectionById, statusColor } from '../lib/constants';
 import { getInitials } from '../lib/formatters';
 import { ModalHeader } from './UI';
 
-export function AttendeeProfile({ auditorium, atn, canEdit, canRemoveFromMap, canManageStatus, onEdit, onRemoveFromMap, onStatus, onClose }) {
+export function AttendeeProfile({ auditorium, atn, canEdit, canRemoveFromMap, canManageStatus, onEdit, onRemoveFromMap, onStatus, onLocateSeat, onClose }) {
   const sec = getSectionById(auditorium, atn.section);
+  const hasSeatAssignment = Boolean(atn.section && atn.row_num && atn.col_num);
 
   return (
     <>
@@ -76,6 +77,9 @@ export function AttendeeProfile({ auditorium, atn, canEdit, canRemoveFromMap, ca
 
         <div className="profile-modal-actions">
           <button className="btn btn-outline btn-sm" onClick={onClose}>Close</button>
+          {hasSeatAssignment && (
+            <button className="btn btn-outline btn-sm" onClick={() => onLocateSeat?.(atn)}>Show Seating</button>
+          )}
           {canRemoveFromMap && (
             <button
               className="btn btn-outline btn-sm"

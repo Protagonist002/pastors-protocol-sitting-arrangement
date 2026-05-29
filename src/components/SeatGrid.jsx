@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef } from 'react';
 
 import { STATUSES, getEffectiveConfig, getSectionById, statusColor } from '../lib/constants';
+import { getInitials } from '../lib/formatters';
 
 export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, attendees, protocolSeats = [], canEdit, onSeatClick, highlightedSeat }) {
   const gridScrollRef = useRef(null);
@@ -86,7 +87,9 @@ export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, att
               const dignitary = occupant?.type === 'dignitary' ? occupant.data : null;
               const protocolSeat = occupant?.type === 'protocol' ? occupant.data : null;
               const protocolName = protocolSeat?.protocol_name || protocolSeat?.protocol_profile?.full_name || 'Protocol officer';
-              const protocolInitials = protocolName.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase();
+              const occupantName = dignitary?.name || protocolName;
+              const occupantImage = dignitary?.picture_url || protocolSeat?.protocol_picture_url || protocolSeat?.protocol_profile?.picture_url || '';
+              const occupantInitials = getInitials(occupantName, '?');
               const isHighlighted = activeHighlight?.row_num === row && activeHighlight?.col_num === col;
               return (
                 <div
@@ -108,12 +111,18 @@ export const SeatGrid = memo(function SeatGrid({ auditorium, sectionId, cfg, att
                   }}
                 >
                   {dignitary ? (
-                    <span style={{ color: statusColor[dignitary.status], fontSize: 8, fontWeight: 700 }}>
-                      {dignitary.name?.split(' ').map((word) => word[0]).join('').slice(0, 2).toUpperCase()}
+                    <span className="seat-person" style={{ color: statusColor[dignitary.status] }}>
+                      <span className="seat-avatar">
+                        {occupantImage ? <img src={occupantImage} alt="" /> : occupantInitials}
+                      </span>
+                      <span className="seat-name">{occupantName}</span>
                     </span>
                   ) : protocolSeat ? (
-                    <span style={{ color: '#38bdf8', fontSize: 8, fontWeight: 800 }}>
-                      {protocolInitials}
+                    <span className="seat-person seat-person--protocol">
+                      <span className="seat-avatar">
+                        {occupantImage ? <img src={occupantImage} alt="" /> : occupantInitials}
+                      </span>
+                      <span className="seat-name">{occupantName}</span>
                     </span>
                   ) : canEdit ? <span style={{ color: 'var(--text-faint)', fontSize: 16, lineHeight: 1 }}>+</span> : null}
                 </div>

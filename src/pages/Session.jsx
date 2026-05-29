@@ -410,9 +410,10 @@ function EditProtocolSeatForm({ auditorium, init = {}, onSave, onCancel }) {
   );
 }
 
-function ProtocolSeatProfile({ auditorium, seat, canEdit, onEdit, onRemove, onClose }) {
+function ProtocolSeatProfile({ auditorium, seat, canEdit, onEdit, onRemove, onLocateSeat, onClose }) {
   const sec = getSectionById(auditorium, seat.section);
   const name = seat.protocol_name || seat.protocol_profile?.full_name || 'Protocol officer';
+  const hasSeatAssignment = Boolean(seat.section && seat.row_num && seat.col_num);
 
   return (
     <>
@@ -461,6 +462,9 @@ function ProtocolSeatProfile({ auditorium, seat, canEdit, onEdit, onRemove, onCl
 
         <div className="profile-modal-actions">
           <button className="btn btn-outline btn-sm" onClick={onClose}>Close</button>
+          {hasSeatAssignment && (
+            <button className="btn btn-outline btn-sm" onClick={() => onLocateSeat?.(seat)}>Show Seating</button>
+          )}
           {canEdit && (
             <button
               className="btn btn-outline btn-sm"
@@ -881,7 +885,7 @@ function SectionConfigModal({ auditorium, sessionId, currentConfig, onClose, onS
   );
 }
 
-function SeatingList({ auditorium, attendees, protocolSeats, onLocateSeat, onLocateProtocolSeat }) {
+function SeatingList({ auditorium, attendees, protocolSeats, onViewSeat, onViewProtocolSeat }) {
   const openSections = getOpenSections(auditorium);
   const sectionGroups = useMemo(() => {
     const seatedDignitaries = attendees
@@ -896,6 +900,7 @@ function SeatingList({ auditorium, attendees, protocolSeats, onLocateSeat, onLoc
         title: dignitary.title,
         notes: dignitary.notes,
         noteLabel: 'Seat note',
+        imageUrl: dignitary.picture_url,
         data: dignitary,
       }));
     const seatedProtocols = protocolSeats
@@ -910,6 +915,7 @@ function SeatingList({ auditorium, attendees, protocolSeats, onLocateSeat, onLoc
         title: seat.assigned_dignitary?.name ? `Protocol for ${seat.assigned_dignitary.name}` : 'Protocol officer',
         notes: seat.notes,
         noteLabel: 'Protocol note',
+        imageUrl: seat.protocol_picture_url || seat.protocol_profile?.picture_url,
         data: seat,
       }));
     const seated = [...seatedDignitaries, ...seatedProtocols].sort((a, b) => {
@@ -953,12 +959,14 @@ function SeatingList({ auditorium, attendees, protocolSeats, onLocateSeat, onLoc
                 key={`${occupant.type}-${occupant.id}`}
                 type="button"
                 className="seating-list-row"
-                onClick={() => (occupant.type === 'protocol' ? onLocateProtocolSeat(occupant.data) : onLocateSeat(occupant.data))}
+                onClick={() => (occupant.type === 'protocol' ? onViewProtocolSeat(occupant.data) : onViewSeat(occupant.data))}
               >
                 <span className="seating-list-seat">R{occupant.row_num} / S{occupant.col_num}</span>
+                <span className={`seating-list-avatar seating-list-avatar--${occupant.type}`}>
+                  {occupant.imageUrl ? <img src={occupant.imageUrl} alt="" /> : getInitials(occupant.name, '?')}
+                </span>
                 <span className="seating-list-person">
-                  <span className="seating-list-name">{occupant.name}</span>
-                  {occupant.title && <span className="seating-list-title">{occupant.title}</span>}
+                  <span className="seating-list-name">{occupant.title ? `${occupant.title} ${occupant.name}` : occupant.name}</span>
                 </span>
                 <span className={`seating-list-kind seating-list-kind--${occupant.type}`}>{occupant.type === 'protocol' ? 'Protocol' : 'Dignitary'}</span>
                 <span className={`seating-list-note ${occupant.notes ? '' : 'seating-list-note--empty'}`}>
@@ -1190,8 +1198,8 @@ export function Session() {
             auditorium={auditorium}
             attendees={attendees}
             protocolSeats={protocolSeats}
-            onLocateSeat={handleLocateSeat}
-            onLocateProtocolSeat={handleLocateProtocolSeat}
+            onViewSeat={setViewingAtn}
+            onViewProtocolSeat={setViewingProtocolSeat}
           />
         )}
 
@@ -1305,6 +1313,7 @@ export function Session() {
               });
               setViewingAtn(null);
             }}
+            onLocateSeat={handleLocateSeat}
             onStatus={(statusValue) => {
               updateDignitaryStatus.mutate({ id: viewingAtn.id, status: statusValue });
               setViewingAtn({ ...viewingAtn, status: statusValue });
@@ -1329,6 +1338,7 @@ export function Session() {
               await deleteProtocolSeat.mutateAsync(viewingProtocolSeat.id);
               setViewingProtocolSeat(null);
             }}
+            onLocateSeat={handleLocateProtocolSeat}
             onClose={() => setViewingProtocolSeat(null)}
           />
         </Modal>
